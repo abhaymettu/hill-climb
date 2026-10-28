@@ -64,15 +64,16 @@ judges per round, one idea (tinted cards with shadows) voted down 0 to 3 and rev
 
 ## How it works
 
-| | |
-|---|---|
-| **Setup first** | Target, baseline, score, gates, budget and stop rule go in `.hillclimb/HILLCLIMB.md` before round 1. The score never changes mid-run; changing it restarts the run. |
-| **Three ways to score** | *Scalar*: a command's number, measured 5 times, a win must clear the noise. *Judge*: fresh-context judges compare blinded A/B screenshots or outputs against a fixed rubric and vote. *Composite*: gates plus either. |
-| **Gates veto** | Tests, builds, contrast, size caps. A candidate that fails one loses, whatever its score. |
-| **One change per round** | Committed, scored, kept or `git reset`. Losses are logged too. |
-| **Stops on its own** | Round or time budget, N rounds without a win, or a target value. |
-| **Gets off local peaks** | After a stall, one bolder move, held to the same bar. |
-| **Honest about drift** | In judge runs, the final best is judged against the original, blind, by a new panel. |
+- **Setup first.** Target, baseline, score, gates, budget and stop rule go in `.hillclimb/HILLCLIMB.md` before
+  round 1. The score never changes mid-run; changing it restarts the run.
+- **Three ways to score.** *Scalar*: a command's number, measured 5 times; a win must clear the noise.
+  *Judge*: fresh-context judges compare blinded A/B screenshots or outputs on a fixed rubric and vote.
+  *Composite*: gates plus either.
+- **Gates veto.** Tests, builds, contrast, size caps. A candidate that fails one loses, whatever its score.
+- **One change per round.** Committed, scored, then kept or `git reset`. Losses are logged too.
+- **Stops on its own.** A round or time budget, N rounds without a win, or a target value.
+- **Gets off local peaks.** After a stall, one bolder move, held to the same bar.
+- **Checks for drift.** In judge runs, the final best is judged against the original by a new blind panel.
 
 The helper `skills/hill-climb/scripts/hc.py` (standard library only) does the mechanical parts:
 
