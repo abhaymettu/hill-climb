@@ -2,10 +2,12 @@
 
 **Hand your coding agent something to improve, and get back a better version plus a log that proves each step.**
 
-hill-climb is an agent skill. It makes the agent work in rounds: change one thing, score it against the
-current best, keep it only if it wins, revert it if not, and write every round down. It works when the score
-is a number (runtime, bundle size, loss, latency) and when it is a matter of taste (how a page looks), where
-blind judges vote instead.
+hill-climb is an agent skill. The agent changes one thing at a time, scores it against the current best, keeps
+it only if it wins, and reverts it if not. Use it for:
+
+- **Speed and size.** Runtime, bundle bytes, memory, latency: any number a command prints.
+- **Quality you can measure.** Test pass rate, model loss, a benchmark score.
+- **Taste.** How a page or a piece of copy looks and reads, voted on by blind judges.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png">
