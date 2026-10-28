@@ -9,7 +9,7 @@ blind judges vote instead.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png">
-  <img alt="A release notes page before and after six rounds of hill-climbing on mobile" src="assets/hero-light.png">
+  <img alt="Two real runs. Speed: a benchmark falls from 2.53 s to 0.0068 s over 8 rounds. Look: a release notes page before and after 6 rounds judged blind." src="assets/hero-light.png">
 </picture>
 
 ## Install
