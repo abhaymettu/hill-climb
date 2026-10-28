@@ -29,7 +29,7 @@ the wrong number is worse than no climb.
 
 ## 2. Setup, written before round 1
 
-1. Work on a new branch, `hill-climb/<tag>`, with no uncommitted changes to tracked files (untracked build
+1. Work on a new branch, `hill-climb/<tag>` (if the name is taken by an earlier run, add `-2`), with no uncommitted changes to tracked files (untracked build
    output such as `__pycache__/` is fine). If the target is not in git, `git init` it. Uncommitted user work
    must never be at risk from a revert: commit it on its own branch, stash it, or stop and ask.
 2. `hc.py init` creates `.hillclimb/HILLCLIMB.md` (from `references/setup-template.md`), `.hillclimb/results.tsv`
@@ -38,7 +38,8 @@ the wrong number is worse than no climb.
    benchmark itself), the score, the exact gate commands, the budget, the stop rule. For judge mode, also
    write the judge prompt to `.hillclimb/judge-prompt.md`; it is frozen like the rest. Show it to the user if they are
    around; do not wait on them if they are not.
-4. Round 0: measure the untouched baseline exactly as every later round will be measured, and log it with
+4. A quick probe before round 0 (one run, to see how long it takes or whether the metric parses) is fine
+   and is not logged. Round 0: measure the untouched baseline exactly as every later round will be measured, and log it with
    `verdict=baseline`. For judge mode, capture the baseline artifacts.
 
 **The score never changes mid-run.** Not the command, the regex, the rubric, the views, the judge count
@@ -55,8 +56,9 @@ to make a number move is not a win; it is a different run. That is why HILLCLIMB
 2. **Make it and commit it**: `git commit -am "r07: <the change>"`.
 3. **Gates.** Run them. Any failure is a loss; skip the score. A trivial slip (a typo, a missing import)
    gets one fix and re-run; a broken idea gets reverted, not nursed. A guard on the benchmark's own output
-   (a checksum line, a result count) can ride along with the measurement: `measure --expect '<regex>'`
-   fails any run whose output lacks it.
+   (a checksum line, a result count) can ride along with the measurement: `measure --expect-line '<exact line>'`
+   (taken literally) or `--expect '<regex>'` fails any run whose output lacks it, and the round's JSON records
+   which guards ran.
 4. **Score.**
    - scalar: `hc.py measure --runs 5 --regex 'seconds=([0-9.]+)' --out .hillclimb/rounds/r07.json -- <cmd>`,
      then `hc.py compare .hillclimb/rounds/best.json .hillclimb/rounds/r07.json --direction min --min-delta 0.02`.
@@ -88,8 +90,9 @@ A scalar is a sample, not a fact. Treat a single run as a rumor.
 - Pick `--min-delta` for what matters to the user, not what the instrument can see: 2% for timings, 0 for
   deterministic counts like bytes or test failures.
 - Mind the instrument's resolution. A metric printed to 4 decimals that reaches 0.007 moves in steps of
-  about 1.5%, and its MAD can read 0. Keep the bar at least 2 or 3 steps wide, or make the benchmark do
-  more work per run so the number is large again.
+  about 1.5%, and its MAD can read 0. Decide at setup how small the number can get, and set `--min-delta`
+  to at least 2 or 3 steps at that size. If it bites mid-run anyway, widening the bar or making the
+  benchmark do more work is a change to the score, so it is a restart.
 - On a WIN that is close to the bar, re-measure the best and the candidate back to back and compare again.
   Machines drift (thermals, other jobs, caches) and the best's numbers may be stale.
 - A gain that only appears at `--runs 1` is not a gain.
@@ -104,8 +107,8 @@ Defaults if the user named none: 20 rounds, patience 5.
 
 ## 6. Escaping a local peak
 
-Small safe changes plateau. When half the patience is spent without a win (3 losses in a row at the
-default patience of 5), spend the next round on one **larger move**: a
+Small safe changes plateau. When half the patience, rounded up, is spent without a win (3 losses in a
+row at the default patience of 5, 2 at patience 3), spend the next round on one **larger move**: a
 different algorithm, a restructured layout, a different approach to the whole thing rather than a tweak.
 It is still one idea, judged under the same score and gates, kept only if it wins. Mark it `notes=big-move`.
 

@@ -84,6 +84,8 @@ def cmd_measure(a):
     cmd = " ".join(parts).strip()
     if not cmd:
         sys.exit("measure: give the command after --")
+    expect = list(a.expect) + [r"^" + re.escape(line) + r"$" for line in a.expect_line]
+    a.expect = expect
     for _ in range(a.warmup):
         _one_run(cmd, a.regex, a.timeout, a.expect)
     samples, errors = [], []
@@ -95,7 +97,8 @@ def cmd_measure(a):
                 break
         else:
             samples.append(v)
-    out = {"cmd": cmd, "metric": a.regex or "wall_seconds", "samples": samples, "errors": errors}
+    out = {"cmd": cmd, "metric": a.regex or "wall_seconds", "expect": expect,
+           "samples": samples, "errors": errors}
     if samples:
         med = statistics.median(samples)
         out["median"] = med
@@ -218,6 +221,8 @@ def main():
                                    "omit to use the command's wall time in seconds")
     s.add_argument("--expect", action="append", default=[], metavar="REGEX",
                    help="output must match this (repeatable); a miss fails the run, like a gate")
+    s.add_argument("--expect-line", action="append", default=[], metavar="TEXT",
+                   help="output must contain this exact line, taken literally (repeatable)")
     s.add_argument("--timeout", type=float, default=600)
     s.add_argument("--fail-fast", action="store_true")
     s.add_argument("--out")
