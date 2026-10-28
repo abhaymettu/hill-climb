@@ -66,35 +66,20 @@ judges per round, one idea (tinted cards with shadows) voted down 0 to 3 and rev
 
 ## How it works
 
-- **Setup first.** Target, baseline, score, gates, budget and stop rule go in `.hillclimb/HILLCLIMB.md` before
-  round 1. The score never changes mid-run; changing it restarts the run.
-- **Three ways to score.** *Scalar*: a command's number, measured 5 times; a win must clear the noise.
-  *Judge*: fresh-context judges compare blinded A/B screenshots or outputs on a fixed rubric and vote.
-  *Composite*: gates plus either.
-- **Gates veto.** Tests, builds, contrast, size caps. A candidate that fails one loses, whatever its score.
-- **One change per round.** Committed, scored, then kept or `git reset`. Losses are logged too.
-- **Stops on its own.** A round or time budget, N rounds without a win, or a target value.
-- **Gets off local peaks.** After a stall, one bolder move, held to the same bar.
-- **Checks for drift.** In judge runs, the final best is judged against the original by a new blind panel.
+Before the first round, the agent writes down what it is improving, how it scores a version, which checks must
+always pass (tests, build, contrast), and when to stop. That setup never changes mid-run, so every round is
+measured the same way.
 
-The helper `skills/hill-climb/scripts/hc.py` (standard library only) does the mechanical parts:
-
-```
-hc.py init        set up .hillclimb/ and keep it out of git
-hc.py measure     run a command N times, report median and spread
-hc.py compare     WIN, LOSS or NOISE between best and candidate
-hc.py flip        blind A/B order and neutral file copies per judge
-hc.py log         append one round to results.tsv
-hc.py status      rounds, best vs baseline, which stop rule fired
-```
+Each round is one change. If a check fails, the change is reverted. Otherwise it is scored against the current
+best: a number is measured several times so noise cannot pass as a win, and taste is decided by three judges who
+see both versions side by side without knowing which is new. Winners are kept, losers are reverted, and every
+round goes in the log. The full method is in [SKILL.md](skills/hill-climb/SKILL.md).
 
 ## Credits
 
-The keep-or-revert loop comes from Andrej Karpathy's
-[autoresearch](https://github.com/karpathy/autoresearch) (MIT): one results file kept out of git, a commit per
-experiment, and simpler code counted as a win. Separate guard commands, plateau stops and randomized judge labels
-are ideas from [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch) (MIT). One variable per trial
-and re-measuring a close winner come from [tbelbek/karpathy-autoresearch](https://github.com/tbelbek/karpathy-autoresearch) (MIT).
+Built on Andrej Karpathy's [autoresearch](https://github.com/karpathy/autoresearch), with ideas from
+[uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch) and
+[tbelbek/karpathy-autoresearch](https://github.com/tbelbek/karpathy-autoresearch). All MIT.
 
 ## License
 
