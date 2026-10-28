@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidewater release notes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Tidewater Release Notes</h1>
+  <p class="intro">Tidewater is a command line tool that syncs a folder of notes to any git remote. Here is what changed in recent versions.</p>
+</header>
+<main>
+  <article>
+    <h2>Version 2.4.0</h2>
+    <p class="date">October 21, 2026</p>
+    <ul>
+      <li>New: <code>tide watch</code> syncs on every save instead of on a timer.</li>
+      <li>Conflicts now open in your editor with both versions side by side.</li>
+      <li>Fixed a crash when a note's filename contained an emoji.</li>
+    </ul>
+  </article>
+  <hr>
+  <article>
+    <h2>Version 2.3.2</h2>
+    <p class="date">September 30, 2026</p>
+    <ul>
+      <li>Large folders (10,000+ notes) start up four times faster.</li>
+      <li>Fixed: <code>tide status</code> showed deleted files as modified.</li>
+    </ul>
+  </article>
+  <hr>
+  <article>
+    <h2>Version 2.3.0</h2>
+    <p class="date">September 2, 2026</p>
+    <ul>
+      <li>New: encrypt individual notes with <code>tide lock</code>.</li>
+      <li>The config file moved to <code>~/.config/tide/config.toml</code>. Old locations still work.</li>
+      <li>Dropped support for git versions older than 2.30.</li>
+    </ul>
+  </article>
+</main>
+<footer>
+  <p>Get notified about new versions: <a href="#subscribe">subscribe to the feed</a> or <a href="#source">read the source</a>.</p>
+</footer>
+</body>
+</html>

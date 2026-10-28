@@ -1,0 +1,14 @@
+{
+  "name": "hill-climb",
+  "owner": { "name": "Abhay Mettu", "url": "https://github.com/abhaymettu" },
+  "metadata": { "description": "hill-climb: one skill for improving anything in measured rounds", "version": "0.1.0" },
+  "plugins": [
+    {
+      "name": "hill-climb",
+      "source": "./",
+      "description": "Improve anything in measured, reversible rounds: scalar metrics, blind pairwise judges, hard gates.",
+      "version": "0.1.0",
+      "license": "MIT"
+    }
+  ]
+}

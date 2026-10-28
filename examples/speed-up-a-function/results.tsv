@@ -1,0 +1,10 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-10-27 21:40:36 CDT	f539398	baseline	2.5283	pass	baseline	mad 0.0043
+1	2026-10-27 21:40:47 CDT	2595cce	dedupe: one-pass dict bucketing	0.0455	pass	keep	gain 98.2%, bar 2%
+2	2026-10-27 21:40:56 CDT	5441cef	top_tokens: sorted() by key, drop bubble sort	0.0147	pass	keep	gain 67.7%, bar 4.0%
+3	2026-10-27 21:41:07 CDT	69bff48	normalize: one re.sub on joined line	0.0108	pass	keep	gain 26.5%, bar 2.7%
+4	2026-10-27 21:41:17 CDT	4e81556	tokenize: precompiled findall	0.0088	pass	keep	gain 18.5%, bar 5.6%
+5	2026-10-27 21:41:21 CDT	4e81556	top_tokens: Counter.update	0.0088	pass	revert	NOISE gain 0%, bar 4.6%; simpler but rule says revert
+6	2026-10-27 21:41:37 CDT	4e81556	tokenize: lower joined words once	0.009	pass	revert	NOISE gain -2.3%, bar 4.6%
+7	2026-10-27 21:41:45 CDT	ae27105	normalize: join raw words, lower once, precompiled digit regex	0.0077	pass	keep	gain 12.5%, bar 4.6%
+8	2026-10-27 21:41:49 CDT	e81cc26	top_tokens: one findall over whole corpus + Counter	0.0068	pass	keep	gain 11.7%, bar 2.6%

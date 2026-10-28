@@ -1,0 +1,10 @@
+body { font-family: Arial, sans-serif; margin: 10px; color: #222; background: #fff; }
+h1 { font-size: 40px; text-align: center; }
+.intro { text-align: center; }
+h2 { font-size: 26px; margin-bottom: 0; }
+.date { font-weight: bold; margin-top: 0; color: #555; }
+ul { padding-left: 20px; }
+li { margin: 2px 0; }
+hr { border: 1px solid #ccc; }
+footer { margin-top: 30px; border-top: 2px solid #000; text-align: center; }
+a { color: blue; }

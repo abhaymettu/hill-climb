@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-10-27 21:41:05 CDT	7cd68a4	baseline: Arial, centered header, full-width lines, hr separators	-	pass (min contrast 7.46)	baseline	rounds/r00
+1	2026-10-27 21:42:10 CDT	72a7b7e	reading column 38rem, left aligned	3/3 cand (A: 6,7,6,9 / 7,7,6,9 / 7,7,6,9 vs 5,4,3,9)	pass (7.46)	keep	flip A=cand x3; evidence: tight list lines, small code, default blue links, heavy footer rule
+2	2026-10-27 21:43:03 CDT	a028fb1	body type system-ui 17/1.6, code 0.9em mono	3/3 cand (cand 8,9,7,9 / 8,8,7,9 / 8,9,7,9 vs 6,5,5,9 / 6,4,4,9 / 6,5,5,9)	pass (7.46)	keep	flip A,B,A; evidence: loose mobile title leading, default blue links
+3	2026-10-27 21:43:42 CDT	8c09b07	heading leading 1.1/1.25, tracking -0.02/-0.01em	3/3 cand (cand 8,8,8,9 x3 vs 7,7,6,9 / 7,8,6,9 / 8,8,6,9)	pass (7.46)	keep	flip B,A,A; evidence: default blue links remain
+4	2026-10-27 21:44:20 CDT	20e3bde	each release in a tinted card with soft shadow	0/3 cand (cand restraint 6,6,6 vs 9,9,9)	pass (6.95)	revert	flip A,B,B; evidence: decoration not needed, card padding narrows mobile column, two left edges
+5	2026-10-27 21:44:54 CDT	49bc1e9	footer hairline, muted footer text, ink links with soft underline	3/3 cand (cand polish 8,8,8 vs 6,6,6)	pass (7.46)	keep	flip A,B,B; evidence: rules tight under last bullet, New: items unmarked
+6	2026-10-27 21:45:26 CDT	8bb74c4	dividers 1px #ddd hairline, equal 2.25rem above and below	3/3 cand (cand polish 8,8,8 vs 6,6,6)	pass (7.46)	keep	flip B,A,A
