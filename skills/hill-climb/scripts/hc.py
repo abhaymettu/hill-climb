@@ -12,6 +12,7 @@ Standard library only. Python 3.8+.
 """
 import argparse
 import json
+import math
 import os
 import re
 import secrets
@@ -118,13 +119,14 @@ def cmd_compare(a):
         return
     b, c = best["median"], cand["median"]
     gain = (b - c) if a.direction == "min" else (c - b)
-    rel = gain / abs(b) if b else float("inf") if gain > 0 else 0.0
+    rel = gain / abs(b) if b else math.copysign(math.inf, gain) if gain else 0.0
     # Noise band: twice the pooled MAD, relative to the incumbent.
     noise = 2 * (best.get("mad", 0) + cand.get("mad", 0)) / abs(b) if b else 0.0
     bar = max(a.min_delta, noise)
-    if rel >= bar:
+    # A tie is never a win, even with --min-delta 0 on a deterministic count.
+    if rel > 0 and rel >= bar:
         verdict = "WIN"
-    elif rel <= -bar:
+    elif rel < 0 and rel <= -bar:
         verdict = "LOSS"
     else:
         verdict = "NOISE"
