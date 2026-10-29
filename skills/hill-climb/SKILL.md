@@ -27,6 +27,22 @@ function that breaks a test is a loss.
 If the user gives no measure, propose one in a sentence and get a yes before starting. A climb toward
 the wrong number is worse than no climb.
 
+### Ports and rewrites: parity first, then speed
+
+When the target is a re-implementation of something that already exists (a port to another language, a
+clone of a tool, a replacement library), the existing thing is the score. Run it as two climbs:
+
+1. **Parity.** Pin the reference's exact version. Build a corpus of real inputs, then copy some of them
+   with faults injected (a syntax error, a missing file, a bad type) so error paths and messages are
+   compared too, not just the happy path. Record the reference's outputs once and freeze them. Score:
+   the count of cases whose output matches byte for byte (scalar, `--direction max`, `--min-delta 0`).
+   Stop at all cases matching.
+2. **Speed (or size).** Restart with parity as a gate: every case still matches. Score the timing against
+   a stated target ("2x faster than the reference") and stop when it is reached.
+
+Never loosen the comparison to make a case pass; normalizing a field that is legitimately different
+(a timestamp, an absolute path) is a setup decision made before round 0 and written in HILLCLIMB.md.
+
 ## 2. Setup, written before round 1
 
 1. Work on a new branch, `hill-climb/<tag>` (if the name is taken by an earlier run, add `-2`), with no uncommitted changes to tracked files (untracked build
@@ -128,6 +144,9 @@ they distort each other's numbers.
 ## 8. Long runs and handoff
 
 - One heavy job at a time by default.
+- Watch round wall time in the log. If the gates and the measurement take far longer than the change, the
+  climb is gate-bound: stop, speed up the gates as their own run (same checks, same verdicts on the same
+  inputs; caching or a prebuilt snapshot, never fewer cases), then restart this run on the faster gates.
 - If a turn has to end while something is still running, first write `.hillclimb/NEXT.md`: what is
   running, how to check it, what wakes the next step, and the next idea in the queue. Never leave background
   work without that note.
