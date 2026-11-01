@@ -64,8 +64,8 @@ Next, in order:
    paste output here.
 
 ## 09:15 all runs scored; handoff to the write-up step
-Totals: 192 agent runs (Sonnet: 5 arms x 4 tasks x 6 seeds = 120 minus v2/v1 not run on... see results.json;
-Opus: 3 arms x 3 tasks x 4 seeds = 36), 900 judge calls. Tables: bench/RESULTS.md, bench/RESULTS-OPUS.md,
+Totals: 156 scored agent runs (Sonnet 5 arms x 4 tasks x 6 seeds = 120; Opus 3 arms x 3 tasks x 4 seeds = 36),
+plus the excluded pilot; 900 judge calls. Tables: bench/RESULTS.md, bench/RESULTS-OPUS.md,
 bench/taste/TASTE.md. LaTeX tables: paper/results_table.tex, paper/results-opus_table.tex, paper/taste_table.tex.
 Figures: assets/bench-results-{light,dark}.png (Sonnet, 4 tasks), assets/bench-results-opus-{light,dark}.png.
 
@@ -88,3 +88,61 @@ Headline findings (all from the tables above):
 7. Validity notes: machine shared (load to 115), so speed scores use CPU time (logstats) and min paired wall
    time (slowsuite). Isolation covered config, not the filesystem: hill-climb agents located hc.py by path;
    one Opus loop run listed ~/.claude/skills (read no skill file). Transcripts sanitized by bench/sanitize.py.
+
+## 09:20 write-up shipped; run counts corrected
+- Exact counts (from bench/results.json, bench/results-opus.json, bench/runs/): 120 scored Sonnet runs (5 arms x 4
+  tasks x 6 seeds), 36 scored Opus runs (3 arms x 3 tasks x 4 seeds), 156 analyzed; plus the pilot
+  `logstats-hillclimb-s0`, 157 run folders. The "192" in the 09:15 entry and "168" in an earlier commit message were wrong.
+- Logged rounds per run (hc_rounds): Sonnet v1 median 3 (7 of 24 at one or none), v2 median 7, v3 median 6; Opus v2 13.5.
+- Paper built: paper/hill-climb.pdf, 10 pages, no LaTeX errors or overfull boxes. paper/make-arxiv.sh builds the
+  arXiv tarball; paper/SUBMIT.md has the steps. Tag skill-v2 added at 1687d40 (the v2 arm ran it minus the
+  judge-panel notes in judging.md).
+- README, site/writeup.md, site/meta.json, site/launch-post.md written; inmyvoice clean. No em dashes, no
+  forbidden names (also checked inside the gzipped transcripts), gitleaks clean.
+
+## Fresh clone test
+Clone of https://github.com/abhaymettu/hill-climb at 2f23901 into a scratch dir, README copy-the-folder install
+into a throwaway HOME, then the quick start on a tiny git repo (a slow `total()` with a checksum assert as the gate):
+
+```
+$ hc.py setup --cmd 'python3 bench.py' --regex 'seconds=([0-9.]+)' --direction min --gate 'python3 bench.py' --frozen bench.py --runs 5 --budget 5 --patience 3
+NEXT: fill in .hillclimb/HILLCLIMB.md, commit any pending work, then run: hc.py baseline
+$ hc.py baseline
+baseline 0.0187693, spread (MAD) 0.000319: at 5 runs a round needs a gain of about 4.0% to count as a WIN.
+NOISY: that bar hides gains smaller than 4%. To resolve 2% gains, restart setup with --runs 20 (hc.py setup ... --force, then hc.py baseline) before round 1.
+$ hc.py round "closed form over the 50-step cycle"
+WIN: gain +100.0%, bar 2.8% -> kept
+NEXT: round 2 of 5. Make ONE change (not to frozen files) and run: hc.py round "<what you changed>". The run is not over until this prints STOP; a big win is not a stop rule.
+$ hc.py round "return 0 (breaks the checksum gate)"
+AssertionError: 0 -> reverted to 601c4dc
+NEXT: round 3 of 5. Make ONE change (not to frozen files) and run: hc.py round "<what you changed>". The run is not over until this prints STOP; a big win is not a stop rule.
+$ cat .hillclimb/results.tsv
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 09:19:46 CST	dd26685	baseline	0.0187693	pass	baseline	mad 0.000319, noise bar 4.0%
+1	2026-11-01 09:19:46 CST	601c4dc	closed form over the 50-step cycle	1.3e-06	pass	keep	WIN: gain +100.0%, bar 2.8%
+2	2026-11-01 09:19:47 CST	cac26e9	return 0 (breaks the checksum gate)		fail	revert	LOSS: gate failed: python3 bench.py: Traceback (most recent call last):   File "<tmp>/demo/bench.py", lin
+$ cat slow.py
+PER = [sum(range(k)) for k in range(50)]
+
+def total(n):
+    q, r = divmod(n, 50)
+    return q * sum(PER) + sum(PER[:r])
+```
+
+Re-score of a committed run and the analyses, in the same clone:
+
+```
+$ uv venv bench/.venv --python 3.12 && uv pip install --python bench/.venv/bin/python numpy pytest matplotlib
+(ok: 2.5.4)
+$ cat bench/runs/tinyclf-plain-s1/score.json  # committed
+{'visible_ok': True, 'hidden_ok': True, 'score': 0.79995, 'tampered': [], 'gates_ok': True}
+$ python3 bench/score.py --rescore tinyclf-plain-s1
+tinyclf-plain-s1 gates_ok 0.79995
+rescored: {'visible_ok': True, 'hidden_ok': True, 'score': 0.79995, 'tampered': [], 'gates_ok': True}
+$ bench/.venv/bin/python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS && git diff --stat
+| loop | 12 | 17% [5%, 45%] | 17% [5%, 45%] of 12 | 0 |
+| hillclimb-v2 | 12 | 0% [0%, 24%] | 0% [0%, 26%] of 11 | 0 |
+| hillclimb-v3 | 24 | 0% [0%, 14%] | 0% [0%, 14%] of 24 | 0 |
+| sonnet vs opus | 84% [76%, 90%] |
+(git status after both analyze.py runs and analyze_taste.py: clean, so tables, results.json and figures regenerate byte for byte)
+```
