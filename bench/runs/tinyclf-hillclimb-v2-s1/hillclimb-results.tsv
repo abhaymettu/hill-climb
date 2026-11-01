@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:38:39 CST	ab5636e	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:45:50 CST	3c02a01	quadratic-feature logistic regression, all 16 features	0.805	pass	keep	WIN: gain +33.1%, bar 0.5%
+2	2026-11-01 05:45:57 CST	80b8927	quad features on first 8 features (chosen by train CV)	0.8475	pass	keep	WIN: gain +5.3%, bar 0.5%
+3	2026-11-01 05:46:27 CST	c8715d6	drop features 6,7 (train CV neutral)	0.85	pass	keep	KEEP: gain +0.3%, bar 0.5%, simpler
+4	2026-11-01 05:47:10 CST	4d357af	LAM 3e-3 (train CV tie)	0.85	pass	revert	NOISE: gain +0.0%, bar 0.5%
+5	2026-11-01 05:47:14 CST	d57348f	epochs 4000	0.85	pass	revert	NOISE: gain +0.0%, bar 0.5%
+6	2026-11-01 05:47:30 CST	a5a1f0a	big move: RBF kernel ridge classifier on 6 features	0.8525	pass	revert	NOISE: gain +0.3%, bar 0.5%

@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 8.566, "final": 1.552, "summary": "Retry tests use a recording fake sleep (asserting the backoff schedule), cyclic GC off for the session, and one session-scoped big catalog shared by all big tests (take test restores stock); same 33 tests plus 1 new, src/ untouched"}

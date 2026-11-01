@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 188.81, "final": 141.46, "summary": "cache_mb 128->1024 (median of 15 runs each); other knobs were noise"}

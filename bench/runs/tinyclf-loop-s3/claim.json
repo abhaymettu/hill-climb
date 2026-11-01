@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8500, "summary": "Logistic regression on first 12 features plus x0*x1, x3^2, x4^2, x6^2 (standardized, L2); dropped noisy features 12-15; hyperparameters chosen by CV on train only."}

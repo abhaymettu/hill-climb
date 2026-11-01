@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4959, "final": 0.0043, "summary": "Rewrote analyze() as a single pass with dict/set/sort instead of quadratic scans; str.split and str-method validation replace regex."}

@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.5544, "final": 0.0060, "summary": "Removed O(n^2) user counting, ip list scans, per-path rescans and insertion-sort percentile; cheaper parsing with cached path normalization"}

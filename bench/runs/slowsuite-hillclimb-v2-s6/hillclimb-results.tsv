@@ -1,0 +1,6 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:28:23 CST	6542990	baseline	8.28543	pass	baseline	mad 0.165
+1	2026-11-01 05:29:01 CST	c179f7a	fake sleep in retry tests	5.68947	pass	keep	WIN: gain +31.3%, bar 11.8%
+2	2026-11-01 05:30:28 CST	cb0212a	build big catalog once per session	29.9043	pass	revert	LOSS: gain -425.6%, bar 275.7%
+3	2026-11-01 05:37:19 CST	99a5b6e	build big catalog once per session (retry)	45.8846	pass	revert	NOISE: gain -706.5%, bar 1040.4%
+4	2026-11-01 05:38:09 CST	d4ef844	session big catalog, manual A/B x3 under load	n/a	pass	keep	hc round unusable at load>60; B beat A 3/3 wall and cpu

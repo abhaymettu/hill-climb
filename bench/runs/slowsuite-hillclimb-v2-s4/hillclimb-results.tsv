@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:23:07 CST	9490a46	baseline	8.18	pass	baseline	mad 0.58
+1	2026-11-01 05:23:51 CST	49c3b35	fake sleep in retry tests	5.32	pass	keep	WIN: gain +35.0%, bar 23.7%
+2	2026-11-01 05:24:17 CST	f1877f5	session-scoped big catalog	3.14	pass	keep	WIN: gain +41.0%, bar 27.4%

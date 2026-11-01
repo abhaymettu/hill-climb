@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 177.73, "final": 114.0, "summary": "workers 12, batch_size 32, cache_mb 1024 (others default); medians of repeated runs"}

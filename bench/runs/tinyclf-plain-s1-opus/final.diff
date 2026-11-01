@@ -1,0 +1,63 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..a253954
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.9, "summary": "Replaced plain logistic regression with Newton-fit L2 logistic regression on standardized, CV-selected features (x0*x1, x3^2, x4^2, sin/cos(2*x2), |x6|, linear x0-5,x7; noise columns 8-15 dropped)."}
+diff --git a/model.py b/model.py
+index 1954905..98d43e7 100644
+--- a/model.py
++++ b/model.py
+@@ -1,19 +1,42 @@
+ """A binary classifier. eval.py calls fit(X, y) on the training split and predict(model, X) on new rows.
+ 
+ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only dependency available.
++
++Logistic regression on a small set of engineered features, chosen by 5-fold CV on the training split:
++the label depends on x0*x1, x3^2, x4^2, a periodic effect of x2, |x6|, and linear x5/x7. Columns 8-15
++showed no signal and are dropped.
+ """
+ import numpy as np
+ 
++LIN = [0, 1, 2, 3, 4, 5, 7]
++
++
++def _features(Z):
++    return np.hstack([
++        Z[:, LIN],
++        Z[:, [0]] * Z[:, [1]],
++        Z[:, [3]] ** 2,
++        Z[:, [4]] ** 2,
++        np.sin(2 * Z[:, [2]]),
++        np.cos(2 * Z[:, [2]]),
++        np.abs(Z[:, [6]]),
++        np.ones((len(Z), 1)),
++    ])
++
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def fit(X, y, lam=1e-3, iters=50):
++    mu, sd = X.mean(0), X.std(0) + 1e-9
++    A = _features((X - mu) / sd)
++    y = y.astype(float)
++    w = np.zeros(A.shape[1])
++    for _ in range(iters):  # Newton's method on L2-regularized log loss
++        p = 1 / (1 + np.exp(-A @ w))
++        H = A.T @ (A * (p * (1 - p))[:, None]) / len(y) + lam * np.eye(len(w))
++        g = A.T @ (p - y) / len(y) + lam * w
++        w -= np.linalg.solve(H, g)
++    return mu, sd, w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, w = model
++    return (_features((X - mu) / sd) @ w > 0).astype(np.int64)

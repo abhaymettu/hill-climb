@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 195.03, "final": 136.19, "summary": "cache_mb 128 -> 1024 cut p95 about 30%; other single-knob changes were within noise"}

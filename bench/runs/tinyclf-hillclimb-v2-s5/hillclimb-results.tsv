@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:23:15 CST	4e4c7d4	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:23:27 CST	740a420	standardize + quadratic features logreg	0.7975	pass	keep	WIN: gain +31.8%, bar 0.5%
+2	2026-11-01 05:23:59 CST	79495bf	L1 (prox) penalty instead of L2, l1=0.02 chosen by train CV	0.8625	pass	keep	WIN: gain +8.2%, bar 0.5%
+3	2026-11-01 05:24:17 CST	47ab24d	relaxed lasso: refit on L1 support with light L2, l1=0.04 (CV-chosen)	0.86	pass	revert	NOISE: gain -0.3%, bar 0.5%
+4	2026-11-01 05:24:40 CST	7630b25	add |z| and sin(z) features (CV +1.2%)	0.8575	pass	revert	LOSS: gain -0.6%, bar 0.5%
+5	2026-11-01 05:24:47 CST	45ed6c3	more epochs (8000) for L1 convergence	0.8625	pass	revert	NOISE: gain +0.0%, bar 0.5%
+6	2026-11-01 05:25:21 CST	600485d	big-move: bagged L1 logreg (8 bootstraps, averaged)	0.8525	pass	revert	LOSS: gain -1.2%, bar 0.5%
+7	2026-11-01 05:25:25 CST	ca132d5	l1=0.03	0.8575	pass	revert	LOSS: gain -0.6%, bar 0.5%

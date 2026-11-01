@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.895, "summary": "L1-regularised logistic regression (FISTA) over standardised linear, pairwise-product and per-feature sin/cos (freq 1,2) terms; penalty chosen by 5-fold CV on train"}

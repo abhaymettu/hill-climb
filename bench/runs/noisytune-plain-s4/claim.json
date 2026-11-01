@@ -1,0 +1,1 @@
+{"metric":"p95_ms","baseline":188,"final":113,"summary":"workers 8->12, batch_size 16->64, cache_mb 128->1400 (within 2048 MB budget); means of 5-6 noisy runs"}

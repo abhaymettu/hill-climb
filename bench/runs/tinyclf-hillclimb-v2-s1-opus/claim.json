@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.855, "summary": "Replaced plain logistic regression with L1-regularized (FISTA) logistic regression on standardized linear+squared+pairwise features; val is the climbed-on set, train-CV estimate ~0.84"}

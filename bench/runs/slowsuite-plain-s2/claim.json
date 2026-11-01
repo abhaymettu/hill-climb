@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.06, "final": 3.2, "summary": "Inject no-op sleep in retry tests (no real sleeping) and build the big catalog once per session, restoring state after the mutating test"}

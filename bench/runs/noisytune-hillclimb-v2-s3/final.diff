@@ -1,0 +1,7 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..f7d9f16
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "p95_ms", "baseline": 193.81, "final": 193.71, "summary": "No improvement found: 7 single-setting changes (workers, cache_mb, prefetch, compression, pool_timeout_ms, batch_size) all fell within noise (MAD ~9ms, bar 13-20%); config.py left at original values."}

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 195.3, "final": 115.2, "summary": "workers 8->12, batch_size 16->48, cache_mb 128->1450, pool_timeout_ms 200->400; mean of repeated runs, noise is about +/-10ms"}

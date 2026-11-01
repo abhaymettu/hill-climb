@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.53, "final": 3.1, "summary": "Retry tests use a no-op sleep (they really slept ~2.7s) and the 400k-item catalog fixture is built once per session instead of per test; same 33 tests, src untouched. Timings are best of 4 interleaved runs on a heavily loaded machine (load ~100), so noisy."}

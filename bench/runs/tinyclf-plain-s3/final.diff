@@ -1,0 +1,50 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..d2c408f
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8375, "summary": "RBF kernel ridge on standardized features 0-11 (noise columns 12-15 dropped), replacing linear logistic regression"}
+diff --git a/model.py b/model.py
+index 1954905..2113604 100644
+--- a/model.py
++++ b/model.py
+@@ -1,19 +1,29 @@
+ """A binary classifier. eval.py calls fit(X, y) on the training split and predict(model, X) on new rows.
+ 
+ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only dependency available.
++
++RBF kernel ridge regression on standardized features. Columns 12-15 carry no usable signal
++(cross-validation on train improves when they are dropped), so they are ignored.
+ """
+ import numpy as np
+ 
++USE = slice(0, 12)
++
++
++def _rbf(A, B, g):
++    d = (A ** 2).sum(1)[:, None] + (B ** 2).sum(1)[None] - 2 * A @ B.T
++    return np.exp(-g * np.maximum(d, 0))
++
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def fit(X, y, gamma=0.02, lam=0.05):
++    X = X[:, USE]
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    a = np.linalg.solve(_rbf(Z, Z, gamma) + lam * np.eye(len(Z)), 2.0 * y - 1)
++    return mu, sd, Z, a, gamma
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, Z, a, gamma = model
++    Zt = (X[:, USE] - mu) / sd
++    return (_rbf(Zt, Z, gamma) @ a > 0).astype(np.int64)

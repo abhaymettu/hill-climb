@@ -1,0 +1,6 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:53:48 CST	3ce4ba7	baseline	2.5064	pass	baseline	mad 0.0217, noise bar 2.0%
+1	2026-11-01 07:53:58 CST	71c6949	single-pass analyze with dicts, sort-based percentile	0.0068	pass	keep	WIN: gain +99.7%, bar 2.0%
+2	2026-11-01 07:54:04 CST	f5396c0	compute latency int once	0.0063	pass	revert	NOISE: gain +7.3%, bar 12.5%
+3	2026-11-01 07:54:09 CST	c40ffbe	local casefold alias	0.0064	pass	revert	NOISE: gain +5.9%, bar 12.2%
+4	2026-11-01 07:54:10 CST	a21dd93	sort with counts.get reverse	0.0064	pass	revert	NOISE: gain +5.9%, bar 12.5%

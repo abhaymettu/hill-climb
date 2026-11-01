@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.5884, "final": 0.0127, "summary": "Single-pass analyze() with dict/set counting, grouped latencies, and sorted() replacing quadratic loops; checksum unchanged"}

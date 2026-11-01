@@ -1,0 +1,6 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:55:44 CST	f2c278b	baseline	2.3635	pass	baseline	mad 0.0275, noise bar 2.7%
+1	2026-11-01 07:55:52 CST	f00c3dc	linear single-pass analyze	0.0063	pass	keep	WIN: gain +99.7%, bar 2.0%
+2	2026-11-01 07:56:02 CST	cc7ef72	compute latency int once	0.0063	pass	revert	NOISE: gain +0.0%, bar 2.0%
+3	2026-11-01 07:56:09 CST	783ead4	bound regex match methods	0.0064	pass	revert	NOISE: gain -1.6%, bar 2.0%
+4	2026-11-01 07:56:13 CST	0e4e99e	count raw users then casefold once per distinct	0.0063	pass	revert	NOISE: gain +0.0%, bar 5.3%

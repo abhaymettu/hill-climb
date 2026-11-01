@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:24:07 CST	8d1ac8f	baseline	0.6050	pass	baseline	
+1	2026-11-01 05:26:25 CST	5f9d748	quadratic features+standardize LR	0.8000	pass	keep	+0.195
+2	2026-11-01 05:26:38 CST	1953dbf	l2 3e-2	0.8050	pass	revert	noise, +0.005 < 0.01
+3	2026-11-01 05:26:41 CST	7ccf798	add x_i x_j^2 terms	0.7700	pass	revert	worse
+4	2026-11-01 05:26:45 CST	b912dc6	first 12 features only	0.8200	pass	keep	+0.02
+5	2026-11-01 05:26:48 CST	dbcfe4a	first 8 features only	0.8475	pass	keep	+0.0275
+6	2026-11-01 05:26:51 CST	5094f2e	first 6 features	0.8500	pass	revert	noise +0.0025

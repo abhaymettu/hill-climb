@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.4, "final": 1.38, "summary": "Retry tests inject a recording sleep (and now assert the backoff and that the default is time.sleep), the 400k-item catalog is built once per session with stock rolled back after each test, cyclic GC is off, and the build and value oracle are cheaper; 34 tests pass, no change to src/."}

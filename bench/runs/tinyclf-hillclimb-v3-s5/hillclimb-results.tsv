@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:02:00 CST	bb0a9a6	baseline	0.605	pass	baseline	mad 0, noise bar 0.0%
+1	2026-11-01 08:02:17 CST	bb12a1e	quadratic features, standardized, L2 logreg	0.8025	pass	keep	WIN: gain +32.6%, bar 0.5%
+2	2026-11-01 08:03:01 CST	8b2148a	drop noise columns 8-15 (chosen by train CV)	0.845	pass	keep	WIN: gain +5.3%, bar 0.5%
+3	2026-11-01 08:03:13 CST	464bd27	add abs(x) features	0.85	pass	keep	WIN: gain +0.6%, bar 0.5%
+4	2026-11-01 08:03:16 CST	adb32c5	epochs 2000	0.85	pass	revert	NOISE: gain +0.0%, bar 0.5%
+5	2026-11-01 08:03:20 CST	d461b18	l2 0.03	0.85	pass	revert	NOISE: gain +0.0%, bar 0.5%
+6	2026-11-01 08:03:21 CST	2a40f1a	l2 0.003	0.8475	pass	revert	NOISE: gain -0.3%, bar 0.5%
+7	2026-11-01 08:03:29 CST	9c44b46	big-move: QDA on first 8 columns	0.8075	pass	revert	LOSS: gain -5.0%, bar 0.5%

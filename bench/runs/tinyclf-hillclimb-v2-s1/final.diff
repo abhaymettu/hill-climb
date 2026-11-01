@@ -1,0 +1,51 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..5ceb248
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Logistic regression on quadratic features of the 6 informative inputs (chosen by train-only CV) instead of linear on all 16"}
+diff --git a/model.py b/model.py
+index 1954905..5a4ba5d 100644
+--- a/model.py
++++ b/model.py
+@@ -4,16 +4,31 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ """
+ import numpy as np
+ 
++FEATURES = list(range(6))
++LAM = 1e-2
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++
++def _expand(X, mu, sd):
++    Z = (X[:, FEATURES] - mu) / sd
++    i, j = np.triu_indices(Z.shape[1])
++    return np.hstack([Z, Z[:, i] * Z[:, j]])
++
++
++def fit(X, y, lr=0.3, epochs=1500):
++    mu, sd = X[:, FEATURES].mean(0), X[:, FEATURES].std(0)
++    F = _expand(X, mu, sd)
++    m2, s2 = F.mean(0), F.std(0) + 1e-8
++    A = np.hstack([(F - m2) / s2, np.ones((len(F), 1))])
++    w = np.zeros(A.shape[1])
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        p = 1 / (1 + np.exp(-A @ w))
++        g = A.T @ (p - y) / len(y)
++        g[:-1] += LAM * w[:-1]
++        w -= lr * g
++    return mu, sd, m2, s2, w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, m2, s2, w = model
++    A = np.hstack([(_expand(X, mu, sd) - m2) / s2, np.ones((len(X), 1))])
++    return (A @ w > 0).astype(np.int64)

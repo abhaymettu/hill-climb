@@ -1,0 +1,2 @@
+round	time	commit	change	score	gates	verdict	notes
+1	2026-11-01 05:08:45 CST	c201041	single-pass analyze, dict/set/sort	0.006	pass	keep	big-move

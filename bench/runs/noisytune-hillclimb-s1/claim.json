@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 192.46, "final": 125.0, "summary": "cache_mb 128->1024 was the only change that cleared the noise bar; other knobs were inside noise"}

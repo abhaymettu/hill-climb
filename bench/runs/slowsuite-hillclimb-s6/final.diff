@@ -1,0 +1,54 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..31a5d87
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.66, "final": 3.82, "summary": "Build the 400k-item catalog once per session (qty restored after each test) and stub real sleeps in the retry tests; no assertions changed, 33 tests still pass"}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..ab4f1c5 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,9 +14,19 @@ def build_big_catalog():
+     return c
+ 
+ 
++_BIG = None
++
++
+ @pytest.fixture
+ def big_catalog():
+-    return build_big_catalog()
++    """Built once per session; qty changes a test makes are undone afterwards."""
++    global _BIG
++    if _BIG is None:
++        _BIG = build_big_catalog()
++    saved = {sku: it["qty"] for sku, it in _BIG.items.items()}
++    yield _BIG
++    for sku, it in _BIG.items.items():
++        it["qty"] = saved[sku]
+ 
+ 
+ @pytest.fixture
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..d179a65 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,7 +46,7 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=lambda _: None) == "ok"
+     assert len(calls) == 3
+ 
+ 
+@@ -55,7 +55,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda _: None)
+ 
+ 
+ def test_retry_backoff_schedule():

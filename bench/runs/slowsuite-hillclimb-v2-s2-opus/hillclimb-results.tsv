@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 06:00:44 CST	5981d5e	baseline	52.7541	pass	baseline	mad 5.12
+1	2026-11-01 06:05:00 CST	c8237d0	build big_catalog once per session, copy per test	61.4049	pass	revert	NOISE: gain -16.4%, bar 74.9%
+2	2026-11-01 06:06:07 CST	b130f79	session-shared big_catalog, restore qty after each test	6.86996	pass	keep	WIN: gain +87.0%, bar 23.6%
+3	2026-11-01 06:07:09 CST	bd18087	retry tests use recording sleep instead of real sleep	12.0038	pass	revert	LOSS: gain -74.7%, bar 68.9%
+0	2026-11-01 06:11:01 CST	b130f79	baseline	21.1182	pass	baseline	mad 7.03
+5	2026-11-01 06:11:43 CST	fec7520	retry tests use recording sleep instead of real sleep	4.50135	pass	keep	WIN: gain +78.7%, bar 71.7%
+6	2026-11-01 06:14:37 CST	682ad06	precompute the 997 price strings in build_big_catalog	15.7805	pass	revert	LOSS: gain -250.6%, bar 201.8%

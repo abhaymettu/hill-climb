@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:24:03 CST	f8b0afc	baseline	0.6050	pass	baseline	
+1	2026-11-01 05:24:10 CST	405973c	standardize+squares, 2000 epochs, l2	0.7575	pass	keep	two ideas bundled
+2	2026-11-01 05:24:13 CST	3cffe49	pairwise interaction features	0.7950	pass	keep	+3.75pts
+3	2026-11-01 05:24:20 CST	3cffe49	l2 sweep 1e-2..1e-1	0.7950	pass	revert	no effect
+4	2026-11-01 05:24:37 CST	6786ace	L1 proximal logistic l1=0.02	0.8600	pass	keep	+6.5pts; l1 picked on val sweep
+5	2026-11-01 05:25:04 CST	cbaeb5e	add cubes	0.8750	pass	keep	5-fold CV on train+val agrees (+2pts)
+6	2026-11-01 05:25:07 CST	cbaeb5e	l1=0.01	0.8700	pass	revert	worse

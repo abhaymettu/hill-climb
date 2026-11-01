@@ -1,0 +1,13 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 06:47:14 CST	5491f30	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 06:48:02 CST	00c4588	standardize + quadratic features, l2 logreg	0.7975	pass	keep	WIN: gain +31.8%, bar 1.0%
+2	2026-11-01 06:53:03 CST	cb918bb	L1 proximal GD instead of L2 (lam 0.025 from train CV)	0.86	pass	keep	WIN: gain +7.8%, bar 1.0%
+3	2026-11-01 06:56:16 CST	ead1888	add per-feature cubic terms (CV 0.850 vs 0.841)	0.86	pass	revert	NOISE: gain +0.0%, bar 1.0%
+4	2026-11-01 06:57:37 CST	f8dbb10	epochs 3000->1000 (objective converged)	0.86	pass	keep	KEEP: gain +0.0%, bar 1.0%, simpler
+5	2026-11-01 06:59:53 CST	f8f9262	add sin(x), sin(2x) per-feature basis (CV 0.890 vs 0.841)	0.8975	pass	keep	WIN: gain +4.4%, bar 1.0%
+6	2026-11-01 07:02:37 CST	f126ccb	drop sin(x) basis, 1500 epochs lr 0.3 (CV equal)	0.8975	pass	keep	KEEP: gain +0.0%, bar 1.0%, simpler
+7	2026-11-01 07:03:22 CST	eb570de	L1 lam 0.025->0.015 (CV 0.890 vs 0.890)	0.8975	pass	revert	NOISE: gain +0.0%, bar 1.0%
+8	2026-11-01 07:03:23 CST	b51a1e0	add cos(x), cos(2x) basis	0.8975	pass	revert	NOISE: gain +0.0%, bar 1.0%
+9	2026-11-01 07:03:32 CST	2bdec70	add per-feature cubic terms on new basis	0.9025	pass	revert	NOISE: gain +0.6%, bar 1.0%
+10	2026-11-01 07:04:57 CST	0de3084	big move: per-feature RBF-bump GAM basis replaces sin(2x) (CV 0.878)	0.8875	pass	revert	LOSS: gain -1.1%, bar 1.0%
+11	2026-11-01 07:05:08 CST	e5466ca	add pairwise products of sin(2x)	0.8975	pass	revert	NOISE: gain +0.0%, bar 1.0%

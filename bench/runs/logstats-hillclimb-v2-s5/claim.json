@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.5935, "final": 0.0137, "summary": "analyze() rewritten as a single pass with dict counters, sorted() percentiles and precompiled regexes (O(n^2) loops removed)"}

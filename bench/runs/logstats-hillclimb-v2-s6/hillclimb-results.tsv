@@ -1,0 +1,10 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:26:38 CST	a0ba74e	baseline	2.4959	pass	baseline	mad 0.0883
+1	2026-11-01 05:26:48 CST	d9a5a80	single-pass analyze with dicts/sets, sort	0.0114	pass	keep	WIN: gain +99.5%, bar 7.1%
+2	2026-11-01 05:26:51 CST	8f8dfc5	precompile validation regexes	0.0115	pass	revert	NOISE: gain -0.9%, bar 7.0%
+3	2026-11-01 05:26:55 CST	2961b02	use str.split() instead of regex split	0.0091	pass	keep	WIN: gain +20.2%, bar 10.5%
+4	2026-11-01 05:27:01 CST	d674087	remove no-op line and unused split	0.0077	pass	keep	WIN: gain +15.4%, bar 15.4%
+5	2026-11-01 05:27:05 CST	c929118	compute latency int once	0.0076	pass	revert	NOISE: gain +1.3%, bar 7.8%
+6	2026-11-01 05:27:10 CST	96b564f	defer user counting to a second pass	0.0083	pass	revert	NOISE: gain -7.8%, bar 28.6%
+7	2026-11-01 05:27:15 CST	4a5dfc8	big-move: str-method validation with ascii fast path	0.0055	pass	keep	WIN: gain +28.6%, bar 5.2%
+8	2026-11-01 05:27:19 CST	a097418	normalize_path via partition and isdigit	0.0047	pass	keep	WIN: gain +14.5%, bar 10.9%

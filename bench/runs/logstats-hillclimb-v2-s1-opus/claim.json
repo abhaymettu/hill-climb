@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 5.6303, "final": 0.0032, "summary": "analyze() rewritten from O(n^2) scans and insertion sorts to one pass with dicts/sets, per-distinct-value parsing caches, cheaper path normalization and sorted(); ~1760x faster, same output (checksum 901ab7534b36f69d), tests pass"}

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 177.63, "final": 177.63, "summary": "No config change beat baseline beyond noise (MAD ~8ms, bars 15-27%); config.py left at original values."}

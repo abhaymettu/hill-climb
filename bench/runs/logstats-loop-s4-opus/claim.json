@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 3.0693, "final": 0.0043, "summary": "Single-pass analyze() with dict/set counting, cached status/latency validation, per-raw-path grouping merged after one normalize per unique path, regex-based normalize_path, and sorted() for top paths and p95; output checksum unchanged."}

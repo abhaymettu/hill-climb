@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 195, "final": 113, "summary": "Raised cache_mb to 1500, batch_size to 64, workers to 10 (within 2048MB budget); kept compression 6, prefetch 0. Values are means of repeated noisy runs."}

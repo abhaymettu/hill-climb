@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:45:23 CST	80b19e8	baseline	190.3	pass	baseline	
+1	2026-11-01 07:45:26 CST	543f871	workers 16	175.21	pass	revert	noise
+2	2026-11-01 07:45:30 CST	a4ddc83	compression 0	227.83	pass	revert	loss
+3	2026-11-01 07:45:35 CST	f39bd19	compression 9	192.83	pass	revert	noise
+4	2026-11-01 07:45:40 CST	d3728b9	prefetch 4	187.04	pass	revert	noise
+5	2026-11-01 07:45:44 CST	7c4f057	batch 64	170.98	pass	revert	noise, 10% gain
+6	2026-11-01 07:45:49 CST	2031d26	batch 128	187.28	pass	revert	noise
+7	2026-11-01 07:45:52 CST	f2fe539	big-move workers4+cache1800	196.51	pass	revert	big-move

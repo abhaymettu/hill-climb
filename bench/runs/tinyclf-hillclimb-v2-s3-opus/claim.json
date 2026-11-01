@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.8925, "summary": "Two-stage sparse logistic model: L1 on quadratic features selects informative inputs (x0-x7), then L1 logistic refit on pairwise products plus hinge bases on features and their squares; val_acc 0.605 -> 0.8925 (5-fold CV on train ~0.875)."}

@@ -1,0 +1,5 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:28:35 CST	59404e7	baseline	8.45	pass	baseline	mad 0.84
+1	2026-11-01 05:31:16 CST	ccf5d39	inject no-op sleep in retry tests	21.48	pass	revert	NOISE: gain -154.2%, bar 372.3%
+2	2026-11-01 05:38:02 CST	49843b5	inject no-op sleep in retry tests (retry r1 under load)	6.02	pass	revert	NOISE: gain +28.8%, bar 52.3%
+3	2026-11-01 05:38:31 CST	ef18655	big-move: build big catalog once per session + no-op retry sleeps	2.78	pass	keep	WIN: gain +67.1%, bar 22.7%

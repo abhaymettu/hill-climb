@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.7586, "final": 0.0065, "summary": "Rewrote analyze() as a single pass with dict/set aggregation and one sort per path instead of quadratic scans; checksum and tests unchanged."}

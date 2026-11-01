@@ -1,0 +1,7 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:51:45 CST	addc6d5	baseline	0.605	pass	baseline	mad 0, noise bar 0.0%
+1	2026-11-01 07:51:56 CST	e134273	standardize + quadratic features, L2 logistic	0.805	pass	keep	WIN: gain +33.1%, bar 0.0%
+2	2026-11-01 07:52:12 CST	7306dc5	sparse features: linear + squares + x0*x1 (picked by train CV)	0.855	pass	keep	WIN: gain +6.2%, bar 0.0%
+3	2026-11-01 07:52:25 CST	38500f3	add cubic terms (train CV +1.7pt)	0.87	pass	keep	WIN: gain +1.8%, bar 0.0%
+4	2026-11-01 07:52:37 CST	36a6fd4	add sin/cos features	0.875	pass	keep	WIN: gain +0.6%, bar 0.0%
+5	2026-11-01 07:52:37 CST	f492823	add x3*x4	0.88	pass	keep	WIN: gain +0.6%, bar 0.0%

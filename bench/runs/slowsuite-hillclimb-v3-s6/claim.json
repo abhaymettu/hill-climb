@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.02, "final": 2.45, "summary": "Injected sleep into retry tests (no real sleeping) and built the 400k-item catalog once per session; test count unchanged at 33, assertions only added."}

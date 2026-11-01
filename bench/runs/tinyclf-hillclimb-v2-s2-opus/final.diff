@@ -1,0 +1,65 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..d5fdfbe
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.895, "summary": "L1-regularised logistic regression (FISTA) over standardised linear, pairwise-product and per-feature sin/cos (freq 1,2) terms; penalty chosen by 5-fold CV on train"}
+diff --git a/model.py b/model.py
+index 1954905..2e4b47f 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,44 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++FREQS = (1, 2)
++
++
++def _features(X, mu, sd):
++    """Intercept, linear, all pairwise products, and a per-feature sin/cos basis on standardised X."""
++    Z = (X - mu) / sd
++    i, j = np.triu_indices(Z.shape[1])
++    cols = [np.ones((len(Z), 1)), Z, Z[:, i] * Z[:, j]]
++    for f in FREQS:
++        cols += [np.sin(f * Z), np.cos(f * Z)]
++    return np.hstack(cols)
++
++
++def fit(X, y, l1=0.02, iters=3000):
++    """L1-regularised logistic regression over a wide feature dictionary, fit by FISTA.
++
++    Only a handful of the ~250 candidate terms carry signal; the L1 penalty (chosen by 5-fold CV on the
++    training split) zeroes the rest. Every column is scaled to unit variance so the penalty treats them alike.
++    """
++    mu, sd = X.mean(0), X.std(0) + 1e-12
++    Phi = _features(X, mu, sd)
++    scale = Phi.std(0)
++    scale[scale < 1e-9] = 1
++    Phi = Phi / scale
++    n = len(y)
++    step = 4 * n / np.linalg.norm(Phi, 2) ** 2
++    w = np.zeros(Phi.shape[1])
++    z, t = w.copy(), 1.0
++    for _ in range(iters):
++        p = 1 / (1 + np.exp(-Phi @ z))
++        w_new = z - step * Phi.T @ (p - y) / n
++        w_new[1:] = np.sign(w_new[1:]) * np.maximum(np.abs(w_new[1:]) - step * l1, 0)
++        t_new = (1 + np.sqrt(1 + 4 * t * t)) / 2
++        z = w_new + (t - 1) / t_new * (w_new - w)
++        w, t = w_new, t_new
++    return mu, sd, w / scale
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, w = model
++    return (_features(X, mu, sd) @ w > 0).astype(np.int64)

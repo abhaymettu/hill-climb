@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3226, "final": 0.006, "summary": "Replaced quadratic loops in analyze() with a single pass using dicts, a set and sorting; output checksum unchanged"}

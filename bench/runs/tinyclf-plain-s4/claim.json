@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.7925, "summary": "Replaced linear logistic regression with a standardized 5-net ensemble of 64-unit ReLU MLPs trained with Adam"}

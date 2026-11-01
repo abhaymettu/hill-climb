@@ -1,0 +1,7 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:03:54 CST	816bbd2	baseline	0.605	pass	baseline	mad 0, noise bar 0.0%
+1	2026-11-01 08:06:16 CST	e6ba908	RBF kernel ridge, standardized	0.7975	pass	keep	WIN: gain +31.8%, bar 0.0%
+2	2026-11-01 08:06:47 CST	2143a66	use first 6 features, g=.1 lam=1 (CV on train)	0.8525	pass	keep	WIN: gain +6.9%, bar 0.0%
+3	2026-11-01 08:06:58 CST	4d11a97	upweight feature 2 by 1.5 (train CV)	0.855	pass	keep	WIN: gain +0.3%, bar 0.0%
+4	2026-11-01 08:07:03 CST	1151f2b	downweight feature 5 to 0.5 (train CV)	0.8725	pass	keep	WIN: gain +2.1%, bar 0.0%
+5	2026-11-01 08:07:04 CST	b5bef28	g=0.15	0.8675	pass	revert	LOSS: gain -0.6%, bar 0.0%

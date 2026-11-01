@@ -1,0 +1,12 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:42:02 CST	0bc050f	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:42:30 CST	cb530ea	quadratic features + standardise + L2 Newton logistic	0.8	pass	keep	WIN: gain +32.2%, bar 0.8%
+2	2026-11-01 05:43:06 CST	d53934f	L1 (FISTA, lam=0.02 by CV) instead of L2 Newton	0.8625	pass	keep	WIN: gain +7.8%, bar 0.8%
+3	2026-11-01 05:43:49 CST	123f810	relaxed lasso: L1 select (lam=0.04) then L2 Newton refit	0.855	pass	revert	LOSS: gain -0.9%, bar 0.8%
+4	2026-11-01 05:46:19 CST	535324f	add per-feature sin/cos (freq 1,2,3) to lasso dictionary, unit-scale columns	0.895	pass	keep	WIN: gain +3.8%, bar 0.8%
+5	2026-11-01 05:48:08 CST	5bdabdd	drop freq-3 sin/cos (unused by the fit)	0.895	pass	keep	KEEP: gain +0.0%, bar 0.8%, simpler
+6	2026-11-01 05:49:16 CST	4464b43	relaxed lasso refit (l1=0.03, l2=0.3 by CV)	0.89	pass	revert	NOISE: gain -0.6%, bar 0.8%
+7	2026-11-01 05:50:06 CST	645de54	big move: compact logistic on the 7 terms found by lasso on train	0.895	pass	revert	NOISE: gain +0.0%, bar 0.8%
+8	2026-11-01 05:50:18 CST	4cf207a	finer sin/cos frequency grid 0.5..2.5	0.8875	pass	revert	LOSS: gain -0.8%, bar 0.8%
+9	2026-11-01 05:50:37 CST	edaf357	average lasso weights over l1 in {0.01,0.02,0.04}	0.885	pass	revert	LOSS: gain -1.1%, bar 0.8%
+10	2026-11-01 05:50:43 CST	7a4d8ef	add |x| per-feature terms to dictionary	0.89	pass	revert	NOISE: gain -0.6%, bar 0.8%

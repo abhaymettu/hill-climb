@@ -1,0 +1,8 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:52:56 CST	b0b1380	baseline	2.3573	pass	baseline	mad 0.0035, noise bar 0.5%
+1	2026-11-01 07:53:01 CST	e9e87c8	single-pass dicts, sorted()	0.0147	pass	keep	WIN: gain +99.4%, bar 2.0%
+2	2026-11-01 07:53:04 CST	dc562cd	split(), precompiled regex	0.0097	pass	keep	WIN: gain +34.0%, bar 3.3%
+3	2026-11-01 07:53:08 CST	3c4fdef	faster normalize_path	0.008	pass	keep	WIN: gain +17.5%, bar 3.1%
+4	2026-11-01 07:53:12 CST	80c7ddf	cache normalize_path per raw path	0.0064	pass	keep	WIN: gain +20.0%, bar 8.5%
+5	2026-11-01 07:53:17 CST	483e415	tuples instead of dict records	0.0055	pass	keep	WIN: gain +14.1%, bar 10.1%
+6	2026-11-01 07:53:21 CST	c686a48	drop double strip	0.0061	pass	revert	LOSS: gain -10.9%, bar 3.9%

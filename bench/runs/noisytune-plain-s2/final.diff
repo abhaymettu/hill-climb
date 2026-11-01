@@ -1,0 +1,27 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..c8d0850
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "p95_ms", "baseline": 188.8, "final": 116.4, "summary": "workers 8->16, batch 16->64, cache 128->1200MB, prefetch 0->2, pool_timeout 200->100ms; means of 5 baseline and 6 final runs (noise ~ +/-10ms)"}
+diff --git a/config.py b/config.py
+index 19432ee..4f7efe2 100644
+--- a/config.py
++++ b/config.py
+@@ -3,10 +3,10 @@
+ The host has 2048 MB for the service: cache_mb + 48 * workers must stay at or under 2048.
+ """
+ CONFIG = {
+-    "workers": 8,            # 1..64
+-    "batch_size": 16,        # 1..512
+-    "cache_mb": 128,         # 0..4096
++    "workers": 16,           # 1..64
++    "batch_size": 64,        # 1..512
++    "cache_mb": 1200,        # 0..4096
+     "compression": 6,        # 0..9
+-    "prefetch": 0,           # 0..16
+-    "pool_timeout_ms": 200,  # 1..1000
++    "prefetch": 2,           # 0..16
++    "pool_timeout_ms": 100,  # 1..1000
+ }

@@ -1,0 +1,21 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:47:38 CST	0e0df85	baseline	177.73	pass	baseline	mad 5.01
+1	2026-11-01 07:47:43 CST	30316e8	workers 16	173.48	pass	revert	NOISE: gain +2.4%, bar 8.1%
+2	2026-11-01 07:47:44 CST	0363f71	batch 64	167.87	pass	revert	NOISE: gain +5.5%, bar 14.5%
+3	2026-11-01 07:47:44 CST	98bad40	cache 1024	144.28	pass	keep	WIN: gain +18.8%, bar 14.7%
+4	2026-11-01 07:47:49 CST	dfa32c0	compression 1	133.84	pass	revert	NOISE: gain +7.2%, bar 18.3%
+5	2026-11-01 07:47:49 CST	f92a93a	prefetch 4	126.96	pass	revert	NOISE: gain +12.0%, bar 18.6%
+6	2026-11-01 07:47:49 CST	fc4a4a9	pool timeout 50	136.11	pass	revert	NOISE: gain +5.7%, bar 21.0%
+7	2026-11-01 07:47:50 CST	86383e5	workers 24		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+8	2026-11-01 07:47:50 CST	a38c670	batch 32	124.34	pass	keep	WIN: gain +13.8%, bar 13.5%
+9	2026-11-01 07:47:54 CST	a792161	cache 1800		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+10	2026-11-01 07:47:54 CST	b81af00	prefetch 8		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+11	2026-11-01 07:47:54 CST	2600067	compression 0		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+12	2026-11-01 07:47:55 CST	5277562	workers 12	116.21	pass	keep	WIN: gain +6.5%, bar 4.0%
+13	2026-11-01 07:47:55 CST	9d617e7	pool 20	116.52	pass	revert	NOISE: gain -0.3%, bar 8.0%
+14	2026-11-01 07:47:55 CST	e441ba2	batch 8	121.05	pass	revert	NOISE: gain -4.2%, bar 9.9%
+15	2026-11-01 07:48:00 CST	a310fad	cache 1400	109.14	pass	revert	NOISE: gain +6.1%, bar 16.4%
+16	2026-11-01 07:48:00 CST	03401d1	prefetch 2	117.59	pass	revert	NOISE: gain -1.2%, bar 3.0%
+17	2026-11-01 07:48:00 CST	fe858f9	compression 3	117.13	pass	revert	NOISE: gain -0.8%, bar 10.2%
+18	2026-11-01 07:48:01 CST	43bb8b4	workers 16	116.11	pass	revert	NOISE: gain +0.1%, bar 9.5%
+19	2026-11-01 07:48:01 CST	ceb78b8	batch 24	115.1	pass	revert	NOISE: gain +1.0%, bar 12.8%

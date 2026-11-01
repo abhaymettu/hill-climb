@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.835, "summary": "Replaced logistic regression with standardized 64-unit tanh MLP (numpy, momentum SGD) with weight decay 6e-3"}

@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:03:02 CST	65def99	baseline	188.81	pass	baseline	mad 13, noise bar 9.3%
+1	2026-11-01 08:03:16 CST	b35551c	workers 16	186.02	pass	revert	NOISE: gain +1.5%, bar 9.3%
+2	2026-11-01 08:03:18 CST	4f35c13	cache 1024	141.46	pass	keep	WIN: gain +25.1%, bar 7.4%
+3	2026-11-01 08:03:19 CST	e307c9b	prefetch 4	139.49	pass	revert	NOISE: gain +1.4%, bar 5.2%
+4	2026-11-01 08:03:25 CST	4f467c3	cache 1800		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+5	2026-11-01 08:03:26 CST	a840bd5	batch 64	133.16	pass	revert	NOISE: gain +5.9%, bar 8.1%
+6	2026-11-01 08:03:27 CST	f9f1513	compression 1	145.57	pass	revert	NOISE: gain -2.9%, bar 5.9%
+7	2026-11-01 08:03:28 CST	4d0b5d9	pool timeout 50	139.15	pass	revert	NOISE: gain +1.6%, bar 5.8%

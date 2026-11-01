@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.985, "final": 4.278, "summary": "Retry tests inject a no-op sleep (and now assert the backoff waits); the 400k-item catalog is built once per session with quantities restored after each test. 33 tests, none removed, src/ untouched."}

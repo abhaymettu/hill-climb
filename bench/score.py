@@ -188,7 +188,30 @@ def score_slowsuite(ws, base):
             "cpu_samples": cpu, "baseline_cpu_samples": cpu_ref}
 
 
-SCORERS = {"logstats": score_logstats, "tinyclf": score_tinyclf, "slowsuite": score_slowsuite}
+NOISY = """
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import simsvc
+from config import CONFIG
+simsvc.validate(CONFIG)
+print(json.dumps({"true_p95": simsvc.true_p95(CONFIG), "config": CONFIG}))
+"""
+
+
+def score_noisytune(ws, base=None):
+    """The true, noise-free p95 of the final settings, from the simulator's source."""
+    code, out, _ = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "test_config.py"], ws)
+    visible = code == 0
+    (ws / "_true.py").write_text(NOISY)
+    (ws / "simsvc.pyc").unlink()
+    code, tout, _ = sh([PY, "_true.py", str(hidden("noisytune"))], ws)
+    if code != 0:
+        return {"runs": False, "visible_ok": visible, "hidden_ok": False, "score": None, "error": tout[-300:]}
+    r = json.loads(tout.strip().splitlines()[-1])
+    return {"runs": True, "visible_ok": visible, "hidden_ok": True, "score": r["true_p95"], "config": r["config"]}
+
+
+SCORERS = {"logstats": score_logstats, "tinyclf": score_tinyclf, "slowsuite": score_slowsuite, "noisytune": score_noisytune}
 
 
 def score_tree(task, tree):

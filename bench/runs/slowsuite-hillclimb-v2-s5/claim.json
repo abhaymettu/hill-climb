@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 8.14, "final": 2.9, "summary": "Retry tests inject a no-op sleep (backoff schedule still asserted); big_catalog built once per session with the mutating take test restoring state. 33 tests, src/ untouched."}

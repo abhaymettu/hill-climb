@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3389, "final": 0.0133, "summary": "Replaced quadratic loops in analyze() with single-pass dict/set aggregation, stable sort, and per-path latency grouping; checksum unchanged."}

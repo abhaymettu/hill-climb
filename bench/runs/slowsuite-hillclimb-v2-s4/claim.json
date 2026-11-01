@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 8.18, "final": 3.11, "summary": "Injected a no-op sleep into the retry tests and shared one session-scoped 400k-item catalog across the big tests (take test restores its mutation); same 33 tests and assertions."}

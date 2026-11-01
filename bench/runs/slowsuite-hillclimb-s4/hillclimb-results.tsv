@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:13:40 CST	67ad68d	baseline	7.45	pass	baseline	
+1	2026-11-01 05:14:04 CST	2bbefff	no-op sleep in retry tests	4.81	pass	keep	gain 35%
+2	2026-11-01 05:14:21 CST	f91c69c	module-scoped big catalog	2.84	pass	keep	gain 41%

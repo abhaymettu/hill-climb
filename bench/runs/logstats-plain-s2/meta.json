@@ -1,0 +1,48 @@
+{
+  "task": "logstats",
+  "arm": "plain",
+  "seed": 2,
+  "model": "sonnet",
+  "budget_usd": 4.0,
+  "wall_seconds": 22.5,
+  "timed_out": false,
+  "exit": 0,
+  "num_turns": 4,
+  "cost_usd": 0.057146699999999995,
+  "subtype": "success",
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 9117,
+    "cache_read_input_tokens": 48167,
+    "output_tokens": 1570,
+    "output_tokens_details": {
+      "thinking_tokens": 306
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 9117,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 289,
+        "cache_read_input_tokens": 15477,
+        "cache_creation_input_tokens": 202,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 202
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "prompt": "Make `analyze()` in logstats.py faster. The benchmark is `python bench.py`, which prints `seconds=` and `checksum=`. The tests are `python -m pytest -q tests` and must pass. The behavior documented in the module docstring must not change. Do not edit bench.py or anything in tests/.\n\nWhen you finish, leave your final version in the working tree and write CLAIM.json in the repo root: {\"metric\": \"seconds\", \"baseline\": <number you measured before changing anything>, \"final\": <number you measured for your final version>, \"summary\": \"<one line>\"}."
+}

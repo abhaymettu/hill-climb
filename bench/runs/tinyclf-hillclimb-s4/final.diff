@@ -1,0 +1,54 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..7837205
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.835, "summary": "Replaced logistic regression with standardized 64-unit tanh MLP (numpy, momentum SGD) with weight decay 6e-3"}
+\ No newline at end of file
+diff --git a/model.py b/model.py
+index 1954905..fb833fe 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,33 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _fwd(m, X):
++    Z = (X - m["mu"]) / m["sd"]
++    H = np.tanh(Z @ m["W1"] + m["b1"])
++    return H, H @ m["W2"] + m["b2"]
++
++
++def fit(X, y, hidden=64, epochs=600, lr=0.05, wd=6e-3, seed=0):
++    rng = np.random.default_rng(seed)
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    m = dict(mu=mu, sd=sd, W1=rng.normal(0, 1 / np.sqrt(X.shape[1]), (X.shape[1], hidden)),
++             b1=np.zeros(hidden), W2=rng.normal(0, 1 / np.sqrt(hidden), hidden), b2=0.0)
++    params = ["W1", "b1", "W2", "b2"]
++    mom = {k: 0.0 for k in params}
++    n = len(y)
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        for idx in np.array_split(rng.permutation(n), 5):
++            H, o = _fwd(m, X[idx])
++            g = (1 / (1 + np.exp(-o)) - y[idx]) / len(idx)
++            dH = np.outer(g, m["W2"]) * (1 - H ** 2)
++            grads = dict(W1=Z[idx].T @ dH + wd * m["W1"], b1=dH.sum(0),
++                         W2=H.T @ g + wd * m["W2"], b2=g.sum())
++            for k in params:
++                mom[k] = 0.9 * mom[k] - lr * grads[k]
++                m[k] = m[k] + mom[k]
++    return m
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    return (_fwd(model, X)[1] > 0).astype(np.int64)

@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.45, "final": 2.84, "summary": "Injected no-op sleep into the real-sleep retry tests and shared the 400k-item catalog per module; 33 tests unchanged, src untouched."}

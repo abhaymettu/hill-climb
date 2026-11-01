@@ -1,0 +1,64 @@
+logstats-hillclimb-v2-s1-opus gates_ok 0.003139999999999997
+logstats-hillclimb-v2-s2-opus gates_ok 0.004014999999999998
+logstats-hillclimb-v2-s3-opus gates_ok 0.005957000000000004
+logstats-hillclimb-v2-s4-opus gates_ok 0.0033340000000000036
+logstats-hillclimb-v3-s1 gates_ok 0.006265
+logstats-hillclimb-v3-s2 gates_ok 0.005352000000000003
+logstats-hillclimb-v3-s3 gates_ok 0.0069139999999999965
+logstats-hillclimb-v3-s4 gates_ok 0.006164999999999997
+logstats-hillclimb-v3-s5 gates_ok 0.0060719999999999975
+logstats-hillclimb-v3-s6 gates_ok 0.004639000000000004
+logstats-loop-s1-opus gates_ok 0.0029910000000000006
+logstats-loop-s2-opus gates_ok 0.003589000000000002
+logstats-loop-s3-opus gates_ok 0.003049999999999997
+logstats-loop-s4-opus gates_ok 0.003251000000000004
+logstats-plain-s1-opus gates_ok 0.006095
+logstats-plain-s2-opus gates_ok 0.005921999999999997
+logstats-plain-s3-opus gates_ok 0.005906999999999996
+logstats-plain-s4-opus gates_ok 0.005517000000000001
+slowsuite-hillclimb-v2-s1-opus gates_ok 1.3814472921658307
+slowsuite-hillclimb-v2-s2-opus gates_ok 2.443879083963111
+slowsuite-hillclimb-v2-s3-opus gates_ok 1.4136278750374913
+slowsuite-hillclimb-v2-s4-opus gates_ok 6.711676083970815
+slowsuite-hillclimb-v3-s1 gates_ok 2.338380667148158
+slowsuite-hillclimb-v3-s2 gates_ok 2.4178952500224113
+slowsuite-hillclimb-v3-s3 gates_ok 2.3240597089752555
+slowsuite-hillclimb-v3-s4 gates_ok 2.321440250147134
+slowsuite-hillclimb-v3-s5 gates_ok 2.299080250086263
+slowsuite-hillclimb-v3-s6 gates_ok 2.243617916945368
+slowsuite-loop-s1-opus GATES FAIL 0.1007479999680072
+slowsuite-loop-s2-opus gates_ok 1.1458236249163747
+slowsuite-loop-s3-opus GATES FAIL 0.18724791589193046
+slowsuite-loop-s4-opus gates_ok 1.1620940410066396
+slowsuite-plain-s1-opus gates_ok 1.2941890840884298
+slowsuite-plain-s2-opus GATES FAIL 0.2384513751603663
+slowsuite-plain-s3 gates_ok 2.173300083959475
+slowsuite-plain-s3-opus GATES FAIL 0.23761691711843014
+slowsuite-plain-s4 gates_ok 2.1731929581146687
+slowsuite-plain-s4-opus GATES FAIL 0.2575727910734713
+slowsuite-plain-s5 gates_ok 2.162078500026837
+slowsuite-plain-s6 gates_ok 2.1681356669869274
+tinyclf-hillclimb-v2-s1 gates_ok 0.83515
+tinyclf-hillclimb-v2-s1-opus gates_ok 0.8417
+tinyclf-hillclimb-v2-s2 gates_ok 0.834
+tinyclf-hillclimb-v2-s2-opus gates_ok 0.8964
+tinyclf-hillclimb-v2-s3 gates_ok 0.79995
+tinyclf-hillclimb-v2-s3-opus gates_ok 0.8842
+tinyclf-hillclimb-v2-s4 gates_ok 0.7919
+tinyclf-hillclimb-v2-s4-opus gates_ok 0.8926
+tinyclf-hillclimb-v2-s5 gates_ok 0.8416
+tinyclf-hillclimb-v2-s6 gates_ok 0.8135
+tinyclf-hillclimb-v3-s1 gates_ok 0.8681
+tinyclf-hillclimb-v3-s2 gates_ok 0.89835
+tinyclf-hillclimb-v3-s3 gates_ok 0.8653
+tinyclf-hillclimb-v3-s4 gates_ok 0.8204
+tinyclf-hillclimb-v3-s5 gates_ok 0.8373
+tinyclf-hillclimb-v3-s6 gates_ok 0.82185
+tinyclf-loop-s1-opus gates_ok 0.90995
+tinyclf-loop-s2-opus gates_ok 0.921
+tinyclf-loop-s3-opus gates_ok 0.9113
+tinyclf-loop-s4-opus gates_ok 0.91165
+tinyclf-plain-s1-opus gates_ok 0.90745
+tinyclf-plain-s2-opus gates_ok 0.84165
+tinyclf-plain-s3-opus gates_ok 0.89295
+tinyclf-plain-s4-opus gates_ok 0.8417

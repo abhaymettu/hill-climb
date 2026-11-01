@@ -1,0 +1,66 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..7660e02
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.985, "final": 4.278, "summary": "Retry tests inject a no-op sleep (and now assert the backoff waits); the 400k-item catalog is built once per session with quantities restored after each test. 33 tests, none removed, src/ untouched."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..b007294 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,11 +14,20 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
+-def big_catalog():
++@pytest.fixture(scope="session")
++def _big_shared():
+     return build_big_catalog()
+ 
+ 
++@pytest.fixture
++def big_catalog(_big_shared):
++    """Shared catalog; restores quantities after each test so mutation cannot leak."""
++    before = {k: v["qty"] for k, v in _big_shared.items.items()}
++    yield _big_shared
++    for k, v in _big_shared.items.items():
++        v["qty"] = before[k]
++
++
+ @pytest.fixture
+ def small_catalog():
+     c = Catalog()
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..8e6dd8b 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -39,6 +39,7 @@ def test_line_total_over_many_quantities():
+ 
+ def test_retry_succeeds_after_failures():
+     calls = []
++    waits = []
+ 
+     def flaky():
+         calls.append(1)
+@@ -46,8 +47,9 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
+@@ -55,7 +57,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda s: None)
+ 
+ 
+ def test_retry_backoff_schedule():

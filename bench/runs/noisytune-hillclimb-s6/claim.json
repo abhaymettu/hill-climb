@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 197.32, "final": 127.77, "summary": "cache_mb 128->1024; other knobs (workers, batch, prefetch, compression) gave no change beyond noise"}

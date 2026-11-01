@@ -1,0 +1,5 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:20:25 CST	a6b160a	baseline	0.6050	pass	baseline	
+1	2026-11-01 05:20:31 CST	07755a2	standardize, 2000 epochs	0.6025	pass	revert	
+2	2026-11-01 05:20:36 CST	41fc926	MLP 64 tanh Adam	0.7550	pass	keep	big-move
+3	2026-11-01 05:21:02 CST	81a5fef	hidden128 wd1e-2 ep1500	0.8475	pass	keep	swept on val; slight selection bias

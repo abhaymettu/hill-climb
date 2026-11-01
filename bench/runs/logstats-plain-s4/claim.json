@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3558, "final": 0.0127, "summary": "Replaced quadratic scans/insertion sort/bubble sort in analyze() with single-pass dict/set aggregation and sorted()"}

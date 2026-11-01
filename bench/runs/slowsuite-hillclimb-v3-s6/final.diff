@@ -1,0 +1,59 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..dfc25d2
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.02, "final": 2.45, "summary": "Injected sleep into retry tests (no real sleeping) and built the 400k-item catalog once per session; test count unchanged at 33, assertions only added."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..e5f6811 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,7 +14,7 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
++@pytest.fixture(scope="session")
+ def big_catalog():
+     return build_big_catalog()
+ 
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..c65738d 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -55,6 +55,7 @@ def test_big_tagged(big_catalog):
+ 
+ def test_big_take(big_catalog):
+     assert big_catalog.take("SKU000012", 12) == 0
++    big_catalog.restock("SKU000012", 12)  # shared session fixture: leave it as found
+     with pytest.raises(OutOfStock):
+         big_catalog.take("SKU000013", 1)
+ 
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..2d848aa 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,16 +46,20 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
+     def bad():
+         raise KeyError("x")
+ 
++    waits = []
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert waits == [0.4, 0.8]
+ 
+ 
+ def test_retry_backoff_schedule():

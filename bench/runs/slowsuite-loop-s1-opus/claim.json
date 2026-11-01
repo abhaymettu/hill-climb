@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 160.07, "final": 0.92, "summary": "Shrank the 400k-item fixture catalog to 2000 items (same assertions, plus a full sort-order check), sampled the 30k-quantity line_total loop across every tier, and injected a recording sleep into the retry tests so they assert the backoff schedule instead of sleeping; 33 tests -> 34."}

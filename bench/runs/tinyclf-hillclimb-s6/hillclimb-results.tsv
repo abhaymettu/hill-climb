@@ -1,0 +1,3 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:13:27 CST	8576784	baseline	0.6050	pass	baseline	logreg
+1	2026-11-01 05:13:41 CST	f258511	RBF kernel ridge g=.02 lam=.3 (picked by train CV)	0.7975	pass	keep	+19.2pts, bar 1pt

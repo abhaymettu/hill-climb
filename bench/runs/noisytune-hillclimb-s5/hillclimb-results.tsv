@@ -1,0 +1,12 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:43:31 CST	f106b74	baseline	195.03	pass	baseline	
+1	2026-11-01 07:43:31 CST	f106b74	workers 16	180.91	pass	revert	noise
+2	2026-11-01 07:43:40 CST	13558c7	batch_size 64	167.94	pass	revert	noise
+3	2026-11-01 07:43:40 CST	13558c7	cache_mb 1024	132.58	pass	keep	win, reverted by mistake, redone as r6
+4	2026-11-01 07:43:40 CST	13558c7	prefetch 4	182.27	pass	revert	noise
+5	2026-11-01 07:43:40 CST	13558c7	compression 2	190.31	pass	revert	noise
+6	2026-11-01 07:43:40 CST	13558c7	cache_mb 1024	138.14	pass	keep	gain 29%, bar 21%
+7	2026-11-01 07:43:49 CST	13558c7	cache_mb 1600	142.37	pass	revert	noise
+8	2026-11-01 07:43:49 CST	13558c7	pool timeout 50 (on top of r7)	138.52	pass	revert	noise
+9	2026-11-01 07:43:53 CST	13558c7	workers 4	193.95	pass	revert	loss
+10	2026-11-01 07:43:53 CST	13558c7	batch_size 4	143.63	pass	revert	noise

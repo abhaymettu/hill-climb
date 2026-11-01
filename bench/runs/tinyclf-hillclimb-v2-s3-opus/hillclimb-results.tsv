@@ -1,0 +1,14 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:42:48 CST	34a6f20	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:43:14 CST	ce465d1	standardized logreg on quadratic features	0.805	pass	keep	WIN: gain +33.1%, bar 0.5%
+2	2026-11-01 05:45:39 CST	161b522	L1 proximal penalty lam=0.02 (CV-chosen)	0.855	pass	keep	WIN: gain +6.2%, bar 0.5%
+3	2026-11-01 05:46:32 CST	97f3310	add per-feature cubic terms	0.8575	pass	revert	NOISE: gain +0.3%, bar 0.5%
+4	2026-11-01 05:47:39 CST	53d8f7e	per-feature hinge basis (7 knots)	0.87	pass	keep	WIN: gain +1.8%, bar 0.5%
+5	2026-11-01 05:49:02 CST	73e9f99	two-stage: L1 feature selection then hinge refit lam=0.01	0.88	pass	keep	WIN: gain +1.1%, bar 0.5%
+6	2026-11-01 05:52:03 CST	51978c5	selection threshold 0.1 (CV-chosen)	0.8875	pass	keep	WIN: gain +0.9%, bar 0.5%
+7	2026-11-01 05:52:14 CST	3619433	hinge basis on squared features	0.8925	pass	keep	WIN: gain +0.6%, bar 0.5%
+8	2026-11-01 05:53:41 CST	4c97025	stage-2 lam 0.005 (CV-chosen)	0.8875	pass	revert	LOSS: gain -0.6%, bar 0.5%
+9	2026-11-01 05:56:32 CST	1353e65	fewer hinge knots (3)	0.8875	pass	revert	LOSS: gain -0.6%, bar 0.5%
+10	2026-11-01 05:58:58 CST	a81960b	Gaussian RBF bases replace hinge bases	0.88	pass	revert	LOSS: gain -1.4%, bar 0.5%
+11	2026-11-01 06:00:45 CST	7f94272	big move: union of hinge + RBF bases, lam 0.02 (CV-chosen)	0.88	pass	revert	LOSS: gain -1.4%, bar 0.5%
+12	2026-11-01 06:01:38 CST	a1168ea	train to convergence (6000 epochs)	0.89	pass	revert	NOISE: gain -0.3%, bar 0.5%

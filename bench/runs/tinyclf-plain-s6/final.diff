@@ -1,0 +1,72 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..df9511d
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8200, "summary": "Replaced logistic regression with a standardized 2-hidden-layer tanh MLP (Adam, L2, 5-net ensemble); hyperparameters chosen by 3-fold CV on train."}
+diff --git a/model.py b/model.py
+index 1954905..b316621 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,51 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _fwd(P, X):
++    h = np.tanh(X @ P["W1"] + P["b1"])
++    h2 = np.tanh(h @ P["W2"] + P["b2"])
++    return h, h2, h2 @ P["W3"] + P["b3"]
++
++
++def fit(X, y, hidden=64, epochs=150, lr=0.01, wd=7e-3, seed=0, nets=5):
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    y = y.astype(float)[:, None]
++    n = len(Z)
++    Ps = []
++    for k in range(nets):
++        r = np.random.RandomState(seed + k)
++        P = {"W1": r.randn(Z.shape[1], hidden) / np.sqrt(Z.shape[1]), "b1": np.zeros(hidden),
++             "W2": r.randn(hidden, hidden) / np.sqrt(hidden), "b2": np.zeros(hidden),
++             "W3": r.randn(hidden, 1) / np.sqrt(hidden), "b3": np.zeros(1)}
++        m = {q: np.zeros_like(v) for q, v in P.items()}
++        s = {q: np.zeros_like(v) for q, v in P.items()}
++        t = 0
++        for ep in range(epochs):
++            idx = r.permutation(n)
++            for i in range(0, n, 128):
++                b = idx[i:i + 128]
++                xb = Z[b]
++                h = np.tanh(xb @ P["W1"] + P["b1"])
++                h2 = np.tanh(h @ P["W2"] + P["b2"])
++                p = 1 / (1 + np.exp(-(h2 @ P["W3"] + P["b3"])))
++                d3 = (p - y[b]) / len(b)
++                d2 = (d3 @ P["W3"].T) * (1 - h2 ** 2)
++                d1 = (d2 @ P["W2"].T) * (1 - h ** 2)
++                G = {"W3": h2.T @ d3, "b3": d3.sum(0), "W2": h.T @ d2, "b2": d2.sum(0),
++                     "W1": xb.T @ d1, "b1": d1.sum(0)}
++                t += 1
++                for q in P:
++                    g = G[q] + (wd * P[q] if q[0] == "W" else 0)
++                    m[q] = 0.9 * m[q] + 0.1 * g
++                    s[q] = 0.999 * s[q] + 0.001 * g * g
++                    P[q] -= lr * (m[q] / (1 - 0.9 ** t)) / (np.sqrt(s[q] / (1 - 0.999 ** t)) + 1e-8)
++        Ps.append(P)
++    return mu, sd, Ps
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, Ps = model
++    Z = (X - mu) / sd
++    z = np.mean([_fwd(P, Z)[2] for P in Ps], axis=0)
++    return (z[:, 0] > 0).astype(np.int64)

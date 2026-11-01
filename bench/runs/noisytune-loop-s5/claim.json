@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 191.1, "final": 159.3, "summary": "workers=16, cache_mb=1024, compression=0, prefetch=2; p95 is noisy (about +/-15ms), mean of 5 runs reported, later options were indistinguishable"}

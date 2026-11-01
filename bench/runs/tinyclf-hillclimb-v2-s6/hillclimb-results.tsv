@@ -1,0 +1,6 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:17:16 CST	3a1f239	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:17:44 CST	74a3e5e	full quadratic features, standardized, L2	0.7925	pass	keep	WIN: gain +31.0%, bar 1.0%
+2	2026-11-01 05:18:30 CST	5c9687c	tanh MLP (32 hidden, Adam, L2) replaces quadratic LR	0.815	pass	keep	WIN: gain +2.8%, bar 1.0%
+3	2026-11-01 05:18:48 CST	0b1a116	ensemble of 5 MLP seeds	0.825	pass	keep	WIN: gain +1.2%, bar 1.0%
+4	2026-11-01 05:19:19 CST	ff07e9f	ensemble of 10 seeds	0.8325	pass	revert	NOISE: gain +0.9%, bar 1.0%

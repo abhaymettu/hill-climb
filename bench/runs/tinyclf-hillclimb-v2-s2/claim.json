@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Standardized quadratic features with top-10 term selection, then L2 logistic regression (settings chosen by CV on train)"}

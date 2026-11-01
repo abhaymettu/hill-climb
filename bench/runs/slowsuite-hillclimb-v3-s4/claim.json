@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.29, "final": 2.54, "summary": "Retry tests inject a no-op sleep instead of really sleeping; the 400k-item catalog is built once per session and the mutating test restores its state."}

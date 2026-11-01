@@ -1,0 +1,110 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..116a5a9
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "seconds", "baseline": 2.9096, "final": 0.0107, "summary": "Replaced quadratic loops (per-user recount, ip list scan, bubble sort, insertion sort, per-path rescans) with dict/set/sorted, memoized normalize_path, and swapped regex parsing for str.split/isdecimal; ~270x faster, tests and checksum unchanged"}
+diff --git a/logstats.py b/logstats.py
+index e1e3192..c67bd3a 100644
+--- a/logstats.py
++++ b/logstats.py
+@@ -26,18 +26,18 @@ replacing every path segment made only of ASCII digits with ":id", and removing
+ unless the path is just "/".
+ """
+ import math
+-import re
+ 
+ 
+ def parse_line(line):
+-    line = line.strip()
+-    parts = re.split(r"\s+", line)
++    # str.split() splits on the same whitespace set as re's \s and drops the ends like strip().
++    parts = line.split()
+     if len(parts) != 7:
+         return None
+     ts, ip, user, method, path, status, latency = parts
+-    if not re.match(r"^-?\d+$", status):
++    # isdecimal() accepts exactly the characters re's \d does.
++    if not (status.isdecimal() or (status[:1] == "-" and status[1:].isdecimal())):
+         return None
+-    if not re.match(r"^\d+ms$", latency):
++    if not (latency.endswith("ms") and latency[:-2].isdecimal()):
+         return None
+     return {
+         "ts": ts,
+@@ -68,12 +68,7 @@ def normalize_path(path):
+ 
+ 
+ def percentile_nearest_rank(values, pct):
+-    ordered = []
+-    for v in values:
+-        i = 0
+-        while i < len(ordered) and ordered[i] <= v:
+-            i += 1
+-        ordered.insert(i, v)
++    ordered = sorted(values)
+     rank = math.ceil(pct / 100 * len(ordered))
+     return ordered[max(rank, 1) - 1]
+ 
+@@ -93,16 +88,11 @@ def analyze(lines):
+     users = {}
+     for rec in records:
+         name = rec["user"].casefold()
+-        count = 0
+-        for other in records:
+-            if other["user"].casefold() == name:
+-                count += 1
+-        users[name] = count
++        users[name] = users.get(name, 0) + 1
+ 
+-    ips = []
++    ips = set()
+     for rec in records:
+-        if rec["ip"] not in ips:
+-            ips.append(rec["ip"])
++        ips.add(rec["ip"])
+ 
+     errors = 0
+     for rec in records:
+@@ -110,25 +100,22 @@ def analyze(lines):
+             errors += 1
+     error_rate = round(errors / len(records), 4) if records else 0.0
+ 
+-    order = []
+-    counts = {}
++    latencies = {}
++    norm = {}
+     for rec in records:
+-        p = normalize_path(rec["path"])
+-        if p not in counts:
+-            order.append(p)
+-            counts[p] = 0
+-        counts[p] += 1
+-    ranked = list(order)
+-    for i in range(len(ranked)):
+-        for j in range(len(ranked) - 1 - i):
+-            if counts[ranked[j]] < counts[ranked[j + 1]]:
+-                ranked[j], ranked[j + 1] = ranked[j + 1], ranked[j]
+-    top_paths = [[p, counts[p]] for p in ranked[:5]]
+-
+-    p95 = {}
+-    for p in order:
+-        lat = [rec["latency"] for rec in records if normalize_path(rec["path"]) == p]
+-        p95[p] = percentile_nearest_rank(lat, 95)
++        raw = rec["path"]
++        p = norm.get(raw)
++        if p is None:
++            p = norm[raw] = normalize_path(raw)
++        lat = latencies.get(p)
++        if lat is None:
++            latencies[p] = [rec["latency"]]
++        else:
++            lat.append(rec["latency"])
++    ranked = sorted(latencies, key=lambda p: -len(latencies[p]))
++    top_paths = [[p, len(latencies[p])] for p in ranked[:5]]
++
++    p95 = {p: percentile_nearest_rank(lat, 95) for p, lat in latencies.items()}
+ 
+     return {
+         "requests": len(records),

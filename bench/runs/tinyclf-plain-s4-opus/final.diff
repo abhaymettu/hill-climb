@@ -1,0 +1,54 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..b31655d
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8550, "summary": "Replaced plain logistic regression with standardized L1-regularized logistic regression on linear + pairwise-product features (lambda picked by 5-fold CV on train only)"}
+diff --git a/model.py b/model.py
+index 1954905..b765553 100644
+--- a/model.py
++++ b/model.py
+@@ -1,19 +1,34 @@
+ """A binary classifier. eval.py calls fit(X, y) on the training split and predict(model, X) on new rows.
+ 
+ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only dependency available.
++
++Logistic regression on standardized linear + pairwise-product features, with an L1 penalty so only the few
++interaction/square terms that carry signal survive (lambda chosen by 5-fold CV on the training split).
+ """
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _expand(Z):
++    i, j = np.triu_indices(Z.shape[1])
++    return np.hstack([Z, Z[:, i] * Z[:, j]])
++
++
++def fit(X, y, lam=0.02, lr=0.5, epochs=3000):
++    y = y.astype(float)
++    mu, sd = X.mean(0), X.std(0) + 1e-9
++    Q = _expand((X - mu) / sd)
++    qmu, qsd = Q.mean(0), Q.std(0) + 1e-9
++    F = (Q - qmu) / qsd
++    w, b = np.zeros(F.shape[1]), 0.0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        g = 1 / (1 + np.exp(-(F @ w + b))) - y
++        w -= lr * F.T @ g / len(y)
++        b -= lr * g.mean()
++        w = np.sign(w) * np.maximum(np.abs(w) - lr * lam, 0)  # proximal step for L1
++    return mu, sd, qmu, qsd, w, b
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, qmu, qsd, w, b = model
++    F = (_expand((X - mu) / sd) - qmu) / qsd
++    return (F @ w + b > 0).astype(np.int64)

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 188.5, "final": 149.6, "summary": "workers 8->24, cache_mb 128->768, prefetch 0->4, batch_size 16->32 (bundled move); single-setting tweaks were all within noise"}

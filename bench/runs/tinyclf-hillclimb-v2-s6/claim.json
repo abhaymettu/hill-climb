@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8250, "summary": "Replaced linear logistic regression with a 5-seed ensemble of standardized tanh MLPs (32 hidden, Adam, L2); about 1.7s training."}

@@ -1,0 +1,15 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:52:58 CST	3cd5951	baseline	7.25517	pass	baseline	mad 0.103
+1	2026-11-01 07:53:43 CST	a799f8e	retry tests use injected sleep and assert the waits	4.59971	pass	keep	WIN: gain +36.6%, bar 6.1%
+2	2026-11-01 07:54:32 CST	69195c1	build big catalog once per session, per-test copy	4.62638	pass	revert	NOISE: gain -0.6%, bar 8.8%
+3	2026-11-01 07:55:06 CST	ab9fbfc	shared session big catalog, restore qty after each test	3.15049	pass	keep	WIN: gain +31.5%, bar 11.1%
+4	2026-11-01 07:55:38 CST	56e5255	snapshot qty as list, restore via zip	2.72898	pass	keep	WIN: gain +13.4%, bar 10.7%
+5	2026-11-01 07:57:15 CST	f0cc0b7	precompute 997 price strings in big catalog build	2.67306	pass	revert	NOISE: gain +2.1%, bar 4.4%
+6	2026-11-01 07:57:41 CST	ef81379	cache 997 Decimal prices for expected value	2.61682	pass	revert	NOISE: gain +4.1%, bar 4.4%
+7	2026-11-01 07:58:16 CST	c0ed17e	drop per-test snapshot; take test restores what it touches	2.59623	pass	revert	WIN: gain +4.9%, bar 3.5%; re-measure back to back 9 runs: NOISE +1.4% bar 10.3% -> reverted by hand
+8	2026-11-01 08:00:17 CST	6970b6e	disable cyclic GC for the test session	1.54262	pass	keep	WIN: gain +43.5%, bar 4.7%; big-move
+9	2026-11-01 08:00:38 CST	59e0330	cache 997 Decimal prices for expected value (retry r06 on new best)	1.6197	pass	revert	NOISE: gain -5.0%, bar 9.0%
+10	2026-11-01 08:00:55 CST	accda1e	precompute 997 price strings in build (retry r05 on new best)	1.55659	pass	revert	NOISE: gain -0.9%, bar 11.7%
+11	2026-11-01 08:01:18 CST	8083eb7	tests/pytest.ini disables unused builtin plugins	1.59598	pass	revert	NOISE: gain -3.5%, bar 5.4%
+12	2026-11-01 08:01:38 CST	4daca6e	big-move: drop per-test snapshot; take test restores what it touches (r07 on new best)	1.57634	pass	revert	NOISE: gain -2.2%, bar 14.5%; big-move
+13	2026-11-01 08:01:56 CST	97c2261	precompute the 997 price values in build and in expected-value oracle	1.41987	pass	revert	NOISE: gain +8.0%, bar 10.3%

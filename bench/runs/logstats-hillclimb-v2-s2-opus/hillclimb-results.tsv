@@ -1,0 +1,19 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:39:44 CST	cc4c3d8	baseline	2.4465	pass	baseline	mad 0.0854
+1	2026-11-01 07:40:17 CST	aa6557b	count users with a dict	1.423	pass	keep	WIN: gain +41.8%, bar 7.4%
+2	2026-11-01 07:40:23 CST	949d349	group p95 latencies in one pass	0.0562	pass	keep	WIN: gain +96.0%, bar 3.0%
+3	2026-11-01 07:40:27 CST	504a268	unique ips via set	0.0315	pass	keep	WIN: gain +44.0%, bar 3.0%
+4	2026-11-01 07:40:31 CST	b984cf2	sorted() in percentile	0.0164	pass	keep	WIN: gain +47.9%, bar 3.0%
+5	2026-11-01 07:40:37 CST	9284a12	stable sorted for top paths	0.0152	pass	keep	WIN: gain +7.3%, bar 3.0%
+6	2026-11-01 07:40:44 CST	1a0e325	split() and precompiled fullmatch in parse_line	0.0092	pass	keep	WIN: gain +39.5%, bar 3.0%
+7	2026-11-01 07:40:50 CST	d884112	memoize normalize_path per raw path	0.0072	pass	keep	WIN: gain +21.7%, bar 3.0%
+8	2026-11-01 07:41:01 CST	5a58f70	fuse parse and aggregation into one pass	0.0061	pass	keep	WIN: gain +15.3%, bar 3.0%
+9	2026-11-01 07:41:09 CST	06643eb	simpler normalize_path with isascii/isdigit	0.0053	pass	keep	WIN: gain +13.1%, bar 3.3%
+10	2026-11-01 07:41:16 CST	7efbd41	isdecimal fast path for status/latency	0.0042	pass	void	WIN: gain +20.8%, bar 3.8%; VOIDED after r11: counted 5xx errors on lines with malformed latency (docstring violation, tests miss it); best reset to r09
+11	2026-11-01 07:41:24 CST	32f19af	fix: count errors only after latency validates	0.0044	pass	revert	LOSS: gain -4.8%, bar 4.8%
+12	2026-11-01 07:41:45 CST	7acc158	isdecimal fast path for status/latency (validated before counting)	0.0044	pass	keep	WIN: gain +17.0%, bar 7.5%
+13	2026-11-01 07:41:53 CST	468679e	count raw users, casefold after the loop	0.0041	pass	revert	NOISE: gain +6.8%, bar 9.1%
+14	2026-11-01 07:41:59 CST	13872ea	group latencies by raw path, normalize after the loop	0.0041	pass	revert	NOISE: gain +6.8%, bar 9.1%
+15	2026-11-01 07:42:18 CST	2baae53	column-wise passes with zip/Counter instead of per-line loop	0.0053	pass	revert	LOSS: gain -20.4%, bar 18.2%
+16	2026-11-01 07:42:35 CST	29433bb	bind hot dict/set methods to locals	0.0042	pass	revert	WIN: gain +4.5%, bar 4.5%; back-to-back re-measure (9 runs each) vs r12: NOISE -2.4% -> reverted to 7acc158
+17	2026-11-01 07:42:54 CST	da74ec7	aggregate on raw user/path keys, fold per distinct key after the loop	0.004	pass	revert	NOISE: gain +9.1%, bar 9.1%

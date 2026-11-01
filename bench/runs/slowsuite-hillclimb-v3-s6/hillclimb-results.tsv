@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:00:32 CST	6709e1c	baseline	7.02	pass	baseline	mad 0.07, noise bar 3.0%
+1	2026-11-01 08:00:58 CST	f89ea9b	inject sleep in retry tests	4.39	pass	keep	WIN: gain +37.5%, bar 2.2%
+2	2026-11-01 08:01:16 CST	eaf4658	build big catalog once per session	2.47	pass	keep	WIN: gain +43.7%, bar 2.0%

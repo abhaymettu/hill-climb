@@ -1,0 +1,114 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..097e4d9
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "seconds", "baseline": 2.6423, "final": 0.0067, "summary": "Replaced quadratic user/ip/path/percentile loops with single-pass dict/set accumulation and sorted-based percentiles"}
+diff --git a/logstats.py b/logstats.py
+index e1e3192..9f56c00 100644
+--- a/logstats.py
++++ b/logstats.py
+@@ -28,6 +28,9 @@ unless the path is just "/".
+ import math
+ import re
+ 
++_STATUS_RE = re.compile(r"^-?\d+$")
++_LAT_RE = re.compile(r"^\d+ms$")
++
+ 
+ def parse_line(line):
+     line = line.strip()
+@@ -79,59 +82,49 @@ def percentile_nearest_rank(values, pct):
+ 
+ 
+ def analyze(lines):
+-    records = []
++    users = {}
++    ips = set()
++    errors = 0
++    total = 0
+     malformed = 0
++    counts = {}
++    lats = {}
++    norm_cache = {}
+     for line in lines:
+-        if line.strip() == "":
++        line = line.strip()
++        if line == "":
+             continue
+-        rec = parse_line(line)
+-        if rec is None:
++        parts = line.split()
++        if len(parts) != 7 or not _STATUS_RE.match(parts[5]) or not _LAT_RE.match(parts[6]):
+             malformed += 1
+-        else:
+-            records.append(rec)
+-
+-    users = {}
+-    for rec in records:
+-        name = rec["user"].casefold()
+-        count = 0
+-        for other in records:
+-            if other["user"].casefold() == name:
+-                count += 1
+-        users[name] = count
+-
+-    ips = []
+-    for rec in records:
+-        if rec["ip"] not in ips:
+-            ips.append(rec["ip"])
+-
+-    errors = 0
+-    for rec in records:
+-        if rec["status"] >= 500:
++            continue
++        total += 1
++        name = parts[2].casefold()
++        users[name] = users.get(name, 0) + 1
++        ips.add(parts[1])
++        if int(parts[5]) >= 500:
+             errors += 1
+-    error_rate = round(errors / len(records), 4) if records else 0.0
++        raw = parts[4]
++        p = norm_cache.get(raw)
++        if p is None:
++            p = norm_cache[raw] = normalize_path(raw)
++        if p in counts:
++            counts[p] += 1
++            lats[p].append(int(parts[6][:-2]))
++        else:
++            counts[p] = 1
++            lats[p] = [int(parts[6][:-2])]
+ 
+-    order = []
+-    counts = {}
+-    for rec in records:
+-        p = normalize_path(rec["path"])
+-        if p not in counts:
+-            order.append(p)
+-            counts[p] = 0
+-        counts[p] += 1
+-    ranked = list(order)
+-    for i in range(len(ranked)):
+-        for j in range(len(ranked) - 1 - i):
+-            if counts[ranked[j]] < counts[ranked[j + 1]]:
+-                ranked[j], ranked[j + 1] = ranked[j + 1], ranked[j]
++    error_rate = round(errors / total, 4) if total else 0.0
++    ranked = sorted(counts, key=lambda p: -counts[p])
+     top_paths = [[p, counts[p]] for p in ranked[:5]]
+-
+     p95 = {}
+-    for p in order:
+-        lat = [rec["latency"] for rec in records if normalize_path(rec["path"]) == p]
+-        p95[p] = percentile_nearest_rank(lat, 95)
++    for p, lat in lats.items():
++        lat.sort()
++        p95[p] = lat[max(math.ceil(0.95 * len(lat)), 1) - 1]
+ 
+     return {
+-        "requests": len(records),
++        "requests": total,
+         "malformed": malformed,
+         "users": users,
+         "unique_ips": len(ips),

@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8525, "summary": "Replaced linear logistic regression with standardized features + squares + x0*x1 interaction, L2 logistic fit via Newton/IRLS"}

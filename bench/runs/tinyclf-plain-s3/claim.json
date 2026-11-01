@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8375, "summary": "RBF kernel ridge on standardized features 0-11 (noise columns 12-15 dropped), replacing linear logistic regression"}

@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8475, "summary": "Replaced logistic regression with a 128-unit tanh MLP (Adam, weight decay 0.01, standardized inputs); hyperparameters picked on val so final is slightly optimistic."}

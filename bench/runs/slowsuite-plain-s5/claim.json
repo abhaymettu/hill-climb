@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 6.86, "final": 2.45, "summary": "Share the big catalog fixture across the session (restoring mutations) and inject a fake sleep into retry tests instead of really sleeping; same 33 tests, retry tests now also assert the backoff schedule."}

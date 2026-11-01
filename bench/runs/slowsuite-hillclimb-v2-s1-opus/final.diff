@@ -1,0 +1,112 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..42d1c73
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 8.566, "final": 1.552, "summary": "Retry tests use a recording fake sleep (asserting the backoff schedule), cyclic GC off for the session, and one session-scoped big catalog shared by all big tests (take test restores stock); same 33 tests plus 1 new, src/ untouched"}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..457fc46 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -1,3 +1,4 @@
++import gc
+ import sys
+ from pathlib import Path
+ 
+@@ -6,6 +7,9 @@ import pytest
+ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+ from inventory import Catalog  # noqa: E402
+ 
++# The big-catalog tests allocate millions of acyclic objects; cyclic GC passes only slow them down.
++gc.disable()
++
+ 
+ def build_big_catalog():
+     c = Catalog()
+@@ -14,11 +18,22 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
++@pytest.fixture(scope="session")
+ def big_catalog():
++    # Shared by tests that only read it; a test that mutates must use fresh_big_catalog.
+     return build_big_catalog()
+ 
+ 
++@pytest.fixture
++def fresh_big_catalog(big_catalog):
++    # The shared catalog, with every stock level put back afterwards so later tests see it untouched.
++    items = big_catalog.items
++    snapshot = {sku: it["qty"] for sku, it in items.items()}
++    yield big_catalog
++    for sku, qty in snapshot.items():
++        items[sku]["qty"] = qty
++
++
+ @pytest.fixture
+ def small_catalog():
+     c = Catalog()
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..a8c6ea2 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -53,10 +53,10 @@ def test_big_tagged(big_catalog):
+     assert len(evens) == 200000 and evens[0] == "SKU000000" and evens[-1] == "SKU399998"
+ 
+ 
+-def test_big_take(big_catalog):
+-    assert big_catalog.take("SKU000012", 12) == 0
++def test_big_take(fresh_big_catalog):
++    assert fresh_big_catalog.take("SKU000012", 12) == 0
+     with pytest.raises(OutOfStock):
+-        big_catalog.take("SKU000013", 1)
++        fresh_big_catalog.take("SKU000013", 1)
+ 
+ 
+ def test_big_roundtrip(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..daaa856 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,16 +46,20 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
+     def bad():
+         raise KeyError("x")
+ 
++    waits = []
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert waits == [0.4, 0.8]
+ 
+ 
+ def test_retry_backoff_schedule():
+@@ -67,3 +71,16 @@ def test_retry_backoff_schedule():
+     with pytest.raises(RuntimeError):
+         with_retry(bad, attempts=4, delay=0.5, sleep=waits.append)
+     assert waits == [0.5, 1.0, 2.0]
++
++
++def test_retry_default_sleep_path():
++    calls = []
++
++    def flaky():
++        calls.append(1)
++        if len(calls) < 2:
++            raise RuntimeError("boom")
++        return "ok"
++
++    assert with_retry(flaky, attempts=2, delay=0.001) == "ok"
++    assert len(calls) == 2

@@ -1,0 +1,10 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:21:42 CST	bb627b0	baseline	2.5221	pass	baseline	mad 0.0278
+1	2026-11-01 05:22:16 CST	7e675d1	users via dict counting, ips via set	1.3962	pass	keep	WIN: gain +44.6%, bar 2.4%
+2	2026-11-01 05:22:21 CST	284dbd4	single-pass path grouping, sorted() for percentile and ranking	0.0153	pass	keep	WIN: gain +98.9%, bar 2.0%
+3	2026-11-01 05:22:27 CST	73349ca	split(), precompiled regexes, isdigit in parsing/normalize	0.0072	pass	keep	WIN: gain +52.9%, bar 10.5%
+4	2026-11-01 05:22:32 CST	6c1f58d	memoize normalize_path	0.0051	pass	keep	WIN: gain +29.2%, bar 19.4%
+5	2026-11-01 05:22:39 CST	5656a80	bound the normalize cache	0.005	pass	keep	KEEP: gain +2.0%, bar 7.8%, simpler
+6	2026-11-01 05:22:42 CST	b12f94c	errors via sum()		fail	revert	LOSS: gate failed: python -m pytest -q tests: est-rank E                                        ^ E   SyntaxError: invalid decimal literal =========================== short test summary info ===============
+7	2026-11-01 05:22:49 CST	a0a85a4	errors via sum()	0.0074	pass	revert	NOISE: gain -48.0%, bar 60.0%
+8	2026-11-01 05:22:55 CST	2e74d62	fuse parse and aggregation into one pass	0.0046	pass	revert	NOISE: gain +8.0%, bar 12.0%

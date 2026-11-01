@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 198.62, "final": 133.85, "summary": "cache_mb 128 -> 1024; other knobs (workers, batch, compression, prefetch, pool timeout) showed no gain beyond noise"}

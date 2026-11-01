@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.22, "final": 0.26, "summary": "Retry tests inject a recording sleep (and now assert the backoff delays) instead of really sleeping; big-catalog fixture shrunk from 400k to 20k SKUs with size-derived assertions. src/ untouched, 33 tests still pass."}

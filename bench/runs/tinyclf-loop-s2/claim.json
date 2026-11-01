@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8550, "summary": "Logistic regression on a sparse nonlinear feature set (x0*x1, squares of x3/x4/x6, linear x2/x5/x7), standardized, L2-regularized"}

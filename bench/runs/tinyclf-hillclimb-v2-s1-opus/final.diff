@@ -1,0 +1,58 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..99dee06
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.855, "summary": "Replaced plain logistic regression with L1-regularized (FISTA) logistic regression on standardized linear+squared+pairwise features; val is the climbed-on set, train-CV estimate ~0.84"}
+diff --git a/model.py b/model.py
+index 1954905..dbadbd5 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,37 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _features(Z):
++    # Linear, squared and pairwise-product terms of the standardized inputs.
++    iu = np.triu_indices(Z.shape[1], 1)
++    pairs = (Z[:, :, None] * Z[:, None, :])[:, iu[0], iu[1]]
++    return np.hstack([Z, Z ** 2, pairs])
++
++
++def _design(model, X):
++    mu, sd, fm, fs, _ = model
++    A = (_features((X - mu) / sd) - fm) / fs
++    return np.hstack([A, np.ones((len(A), 1))])
++
++
++def fit(X, y, lam=0.02, iters=3000):
++    mu, sd = X.mean(0), X.std(0) + 1e-9
++    F = _features((X - mu) / sd)
++    fm, fs = F.mean(0), F.std(0) + 1e-9
++    A = _design((mu, sd, fm, fs, None), X)
++    # L1-regularized logistic regression by FISTA; the penalty keeps only the few terms that carry signal.
++    L = 0.25 * np.linalg.norm(A, 2) ** 2 / len(y)
++    w = np.zeros(A.shape[1])
++    z, t = w.copy(), 1.0
++    for _ in range(iters):
++        p = 1 / (1 + np.exp(-A @ z))
++        wn = z - A.T @ (p - y) / len(y) / L
++        wn[:-1] = np.sign(wn[:-1]) * np.maximum(np.abs(wn[:-1]) - lam / L, 0)
++        tn = (1 + np.sqrt(1 + 4 * t * t)) / 2
++        z = wn + (t - 1) / tn * (wn - w)
++        w, t = wn, tn
++    return mu, sd, fm, fs, w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    return (_design(model, X) @ model[-1] > 0).astype(np.int64)

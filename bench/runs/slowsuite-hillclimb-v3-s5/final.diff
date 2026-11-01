@@ -1,0 +1,58 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..ad952aa
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.74, "final": 2.65, "summary": "Retry tests inject a no-op sleep; the 400k-item catalog is built once per session with the one mutating test rolled back. Same 33 tests, src/ untouched."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..fee328c 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,11 +14,22 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
+-def big_catalog():
++@pytest.fixture(scope="session")
++def _big_catalog_shared():
+     return build_big_catalog()
+ 
+ 
++@pytest.fixture
++def big_catalog(_big_catalog_shared):
++    # shared across tests; the one mutating test (take) is rolled back here
++    items = _big_catalog_shared.items
++    touched = {"SKU000012": items["SKU000012"]["qty"], "SKU000013": items["SKU000013"]["qty"]}
++    yield _big_catalog_shared
++    for k, q in touched.items():
++        items[k]["qty"] = q
++
++
++
+ @pytest.fixture
+ def small_catalog():
+     c = Catalog()
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..d179a65 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,7 +46,7 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=lambda _: None) == "ok"
+     assert len(calls) == 3
+ 
+ 
+@@ -55,7 +55,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda _: None)
+ 
+ 
+ def test_retry_backoff_schedule():

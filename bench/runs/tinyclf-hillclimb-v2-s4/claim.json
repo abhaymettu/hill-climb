@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.81, "summary": "Replaced logistic regression with a standardized 64-unit tanh MLP trained with Adam and weight decay 1e-2 (nonlinear structure in the data)."}

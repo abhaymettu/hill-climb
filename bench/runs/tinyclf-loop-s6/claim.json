@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8500, "summary": "Logistic regression on standardized features 0-11, their squares and x0*x1 with L2 (chosen by CV on train); features 12-15 dropped as noise."}

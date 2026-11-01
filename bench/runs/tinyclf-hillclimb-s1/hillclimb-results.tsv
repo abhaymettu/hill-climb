@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:23:19 CST	a8a859f	baseline	0.6050	pass	baseline	
+1	2026-11-01 05:23:19 CST	a8a859f	MLP 64 tanh adam	0.7575	pass	keep	cv .755
+2	2026-11-01 05:23:48 CST	7a8a872	hidden32 wd1e-2	0.85	pass	keep	cv .79 vs .755

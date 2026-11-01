@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.76, "final": 2.8, "summary": "Inject fake sleep in retry tests (asserting the backoff waits) and build the 400k-item catalog once per session, restoring the one mutated item."}

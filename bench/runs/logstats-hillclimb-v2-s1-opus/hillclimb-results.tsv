@@ -1,0 +1,17 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:08:54 CST	1830b14	baseline	5.6303	pass	baseline	mad 0.74
+1	2026-11-01 07:13:36 CST	72d8e36	single pass with dicts/set, sorted() for ranking and percentile	0.0129	pass	keep	WIN: gain +99.8%, bar 26.3%
+2	2026-11-01 07:13:55 CST	6487043	inline parsing with str.split/isdecimal, no per-line dicts	0.006	pass	keep	WIN: gain +53.5%, bar 6.2%
+3	2026-11-01 07:14:07 CST	4aba343	aggregate by raw user/path in loop, casefold/normalize per distinct key after	0.0053	pass	revert	NOISE: gain +11.7%, bar 13.3%
+4	2026-11-01 07:14:41 CST	54cf120	columnar: comprehensions + Counter, validate distinct status/latency strings once	0.0059	pass	revert	NOISE: gain +1.7%, bar 13.3%
+5	2026-11-01 07:15:13 CST	8b6dd41	work once per distinct value: raw user/path aggregation + status/latency string caches (r3 alone was noise)	0.0045	pass	keep	WIN: gain +25.0%, bar 6.7%
+6	2026-11-01 07:15:49 CST	38f099c	normalize_path: partition + isdigit/isascii list-comp instead of per-char all()	0.0032	pass	keep	WIN: gain +28.9%, bar 2.0%
+7	2026-11-01 07:17:21 CST	36e153e	__missing__ caches for status/latency + defaultdict aggregation	0.0035	pass	keep	KEEP: gain -9.4%, bar 12.5%, simpler
+8	2026-11-01 07:17:28 CST	a2a3289	restore r6 dict.get loop (r7 measured -9.4% median)	0.0035	pass	revert	NOISE: gain +0.0%, bar 17.1%
+9	2026-11-01 07:18:04 CST	f9212c4	p95 inline: in-place sort, no helper call	0.0031	pass	keep	WIN: gain +11.4%, bar 11.4%
+9r	2026-11-01 07:18:26 CST	f9212c4	recheck r9 vs r7 interleaved x10	0.0032	pass	keep	tie on recheck (medians 0.0032-0.0033 both); r9 WIN was noise, kept as equal
+11	2026-11-01 07:18:40 CST	2b20822	map(str.split) + local-bound ips.add	0.0032	pass	revert	NOISE: gain -3.2%, bar 6.5%
+12	2026-11-01 07:19:01 CST	4a88cfb	inline path normalization in merge loop	0.0031	pass	revert	NOISE: gain +0.0%, bar 2.0%
+13	2026-11-01 07:19:28 CST	e2e6df0	loop keeps good rows; Counter/set/sum over itemgetter columns after	0.0038	pass	revert	LOSS: gain -22.6%, bar 6.5%
+14	2026-11-01 07:19:52 CST	081b54b	big move: columnar zip(*rows) + Counter, validate distinct status/latency once	0.0046	pass	revert	LOSS: gain -48.4%, bar 32.3%
+15	2026-11-01 07:20:10 CST	e2f1d59	single cache keyed on (status, latency) pair	0.0036	pass	revert	LOSS: gain -16.1%, bar 2.0%

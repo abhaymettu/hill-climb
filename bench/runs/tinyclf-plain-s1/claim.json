@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8000, "summary": "Replaced linear logistic regression with RBF kernel ridge on standardized features (hyperparams chosen by 5-fold CV on train)"}

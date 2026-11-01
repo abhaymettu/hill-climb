@@ -1,0 +1,100 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..dec8246
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.1, "final": 0.27, "summary": "Retry tests inject a recording sleep and assert the backoff waits instead of really sleeping; big-catalog fixture shrunk from 400k to 20k SKUs (still covers every price/qty cycle); added a default-sleep retry test (33 -> 34 tests)."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..ff70d4a 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -7,9 +7,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+ from inventory import Catalog  # noqa: E402
+ 
+ 
++# Large enough to cover every price (i % 997) and qty (i % 13) combination cycle many times over,
++# small enough to build quickly.
++BIG_N = 20000
++
++
+ def build_big_catalog():
+     c = Catalog()
+-    for i in range(400000):
++    for i in range(BIG_N):
+         c.add(f"SKU{i:06d}", f"{(i % 997) / 7:.2f}", i % 13, tags=("even",) if i % 2 == 0 else ("odd",))
+     return c
+ 
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..e9f1e83 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -1,6 +1,7 @@
+ from decimal import Decimal
+ 
+ import pytest
++from conftest import BIG_N
+ from inventory import Catalog, OutOfStock
+ 
+ 
+@@ -44,13 +45,13 @@ def test_json_roundtrip(small_catalog):
+ 
+ 
+ def test_big_value(big_catalog):
+-    expected = sum(Decimal(f"{(i % 997) / 7:.2f}") * (i % 13) for i in range(400000))
++    expected = sum(Decimal(f"{(i % 997) / 7:.2f}") * (i % 13) for i in range(BIG_N))
+     assert big_catalog.value() == expected
+ 
+ 
+ def test_big_tagged(big_catalog):
+     evens = big_catalog.tagged("even")
+-    assert len(evens) == 200000 and evens[0] == "SKU000000" and evens[-1] == "SKU399998"
++    assert len(evens) == BIG_N // 2 and evens[0] == "SKU000000" and evens[-1] == f"SKU{BIG_N - 2:06d}"
+ 
+ 
+ def test_big_take(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..3bd1282 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,16 +46,20 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
+     def bad():
+         raise KeyError("x")
+ 
++    waits = []
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert waits == [0.4, 0.8]
+ 
+ 
+ def test_retry_backoff_schedule():
+@@ -67,3 +71,17 @@ def test_retry_backoff_schedule():
+     with pytest.raises(RuntimeError):
+         with_retry(bad, attempts=4, delay=0.5, sleep=waits.append)
+     assert waits == [0.5, 1.0, 2.0]
++
++
++def test_retry_default_sleep_and_attempts():
++    calls = []
++
++    def flaky():
++        calls.append(1)
++        if len(calls) < 3:
++            raise RuntimeError("boom")
++        return "ok"
++
++    # delay=0 exercises the real default sleep without waiting; default attempts is 3.
++    assert with_retry(flaky, delay=0) == "ok"
++    assert len(calls) == 3

@@ -18,8 +18,8 @@ from pathlib import Path
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
-TASKS = {"logstats": "min", "tinyclf": "max", "slowsuite": "min"}
-LABEL = {"logstats": "Speed up a function", "tinyclf": "Raise held-out accuracy", "slowsuite": "Speed up a test suite"}
+TASKS = {"logstats": "min", "tinyclf": "max", "slowsuite": "min", "noisytune": "min"}
+LABEL = {"logstats": "Speed up a function", "tinyclf": "Raise held-out accuracy", "slowsuite": "Speed up a test suite", "noisytune": "Tune under a noisy benchmark"}
 
 
 def improvement(task, base, value):
@@ -156,10 +156,12 @@ def figure(rows, arms, base, path_stem):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    colors = {"plain": "#8a8f98", "loop": "#c58b2a", "hillclimb": "#2f6fd6", "hillclimb-v2": "#1f9d6b"}
+    colors = {"plain": "#8a8f98", "loop": "#c58b2a", "hillclimb": "#2f6fd6", "hillclimb-v2": "#1f9d6b", "hillclimb-v3": "#7a4fd6"}
+    short = {"plain": "plain", "loop": "loop", "hillclimb": "skill v1", "hillclimb-v2": "v2", "hillclimb-v3": "v3"}
     for theme, fg, bg in (("light", "#1f2328", "none"), ("dark", "#e6edf3", "none")):
-        fig, axes = plt.subplots(1, 3, figsize=(11, 3.4))
-        for ax, task in zip(axes, TASKS):
+        tasks = [t for t in TASKS if any(r["task"] == t for r in rows)]
+        fig, axes = plt.subplots(1, len(tasks), figsize=(3.7 * len(tasks), 3.4))
+        for ax, task in zip(axes, tasks):
             for i, arm in enumerate(arms):
                 rs = [r for r in rows if r["task"] == task and r["arm"] == arm]
                 for k, r in enumerate(sorted(rs, key=lambda r: r["seed"])):
@@ -180,7 +182,7 @@ def figure(rows, arms, base, path_stem):
             else:
                 ax.set_ylabel("held-out accuracy gain (pts)", color=fg)
             ax.axhline(1 if TASKS[task] == "min" else 0, color=fg, lw=0.6, alpha=0.4)
-            ax.set_xticks(range(len(arms)), arms, color=fg)
+            ax.set_xticks(range(len(arms)), [short.get(x, x) for x in arms], color=fg)
             ax.set_title(LABEL[task], color=fg, fontsize=11)
             ax.tick_params(colors=fg)
             for s in ax.spines.values():

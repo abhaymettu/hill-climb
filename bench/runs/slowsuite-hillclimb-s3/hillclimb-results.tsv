@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:19:29 CST	7f7e5e4	baseline	7.638	pass	baseline	
+1	2026-11-01 05:19:54 CST	7f7e5e4	no real sleep in retry tests	5.413	pass	keep	gain 29%
+2	2026-11-01 05:20:12 CST	3869059	big catalog built once per session	2.865	pass	keep	gain 47%

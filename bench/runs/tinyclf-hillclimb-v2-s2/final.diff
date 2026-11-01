@@ -1,0 +1,51 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..2efda65
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Standardized quadratic features with top-10 term selection, then L2 logistic regression (settings chosen by CV on train)"}
+diff --git a/model.py b/model.py
+index 1954905..a4efb05 100644
+--- a/model.py
++++ b/model.py
+@@ -4,16 +4,32 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ """
+ import numpy as np
+ 
++_I, _J = np.triu_indices(16)
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++
++def _feat(X, mu, sd):
++    Z = (X - mu) / sd
++    return np.hstack([Z, Z[:, _I] * Z[:, _J], np.ones((len(Z), 1))])
++
++
++def _logreg(F, y, l2, lr=0.5, epochs=800):
++    w = np.zeros(F.shape[1])
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
++        p = 1 / (1 + np.exp(-F @ w))
++        g = F.T @ (p - y) / len(y)
++        g[:-1] += l2 * w[:-1]
++        w -= lr * g
+     return w
+ 
+ 
++def fit(X, y, keep=10, l2=1e-3):
++    mu, sd = X.mean(0), X.std(0)
++    F = _feat(X, mu, sd)
++    w = _logreg(F, y, 1e-2)
++    idx = np.r_[np.argsort(-np.abs(w[:-1]))[:keep], F.shape[1] - 1]
++    return mu, sd, idx, _logreg(F[:, idx], y, l2)
++
++
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, idx, w = model
++    return (_feat(X, mu, sd)[:, idx] @ w > 0).astype(np.int64)

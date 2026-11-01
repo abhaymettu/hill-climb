@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.8975, "summary": "Standardized inputs + sin(2x), linear and all pairwise-quadratic features, logistic regression with L1 (proximal GD, lam chosen by train CV) to discard noise terms"}

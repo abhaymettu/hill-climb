@@ -1,0 +1,58 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..b6a1547
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.9000, "summary": "Replaced plain logistic regression on raw inputs with Newton-fit L2 logistic regression on 7 CV-selected shaped features (x5, x7, x0*x1, x3^2, x4^2, sin(2*x2), |x6|)"}
+diff --git a/model.py b/model.py
+index 1954905..6286cfa 100644
+--- a/model.py
++++ b/model.py
+@@ -1,19 +1,38 @@
+ """A binary classifier. eval.py calls fit(X, y) on the training split and predict(model, X) on new rows.
+ 
+ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only dependency available.
++
++Logistic regression on a small set of hand-shaped features: linear x5 and x7, the interaction x0*x1, the
++squares x3^2 and x4^2, a periodic sin(2*x2) and |x6|. The other columns add only noise. Every term and
++shape was chosen by repeated 5-fold cross-validation on the training split.
+ """
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
++def _features(X):
++    cols = [
++        X[:, 5],
++        X[:, 7],
++        X[:, 0] * X[:, 1],
++        X[:, 3] ** 2,
++        X[:, 4] ** 2,
++        np.sin(2 * X[:, 2]),
++        np.abs(X[:, 6]),
++    ]
++    return np.column_stack(cols + [np.ones(len(X))])
++
++
++def fit(X, y, lam=1.0, iters=30):
++    F = _features(X)
++    w = np.zeros(F.shape[1])
++    R = lam * np.eye(len(w))
++    R[-1, -1] = 0  # do not penalise the bias
++    for _ in range(iters):  # Newton's method on L2-regularised log loss
++        p = 1 / (1 + np.exp(-F @ w))
++        H = (F * (p * (1 - p))[:, None]).T @ F + R
++        w -= np.linalg.solve(H, F.T @ (p - y) + R @ w)
+     return w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    return (_features(X) @ model > 0).astype(np.int64)

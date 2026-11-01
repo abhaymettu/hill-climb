@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3641, "final": 0.0062, "summary": "Rewrote analyze() as a single pass with dict/set counting and sorted() percentiles, removing the O(n^2) loops; output checksum unchanged."}

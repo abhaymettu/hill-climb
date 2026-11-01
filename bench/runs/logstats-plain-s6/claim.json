@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.6423, "final": 0.0067, "summary": "Replaced quadratic user/ip/path/percentile loops with single-pass dict/set accumulation and sorted-based percentiles"}

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 192.5, "final": 109.7, "summary": "Raised cache_mb to 1200, workers 12, batch_size 64, prefetch 8, pool_timeout_ms 50; cache size was the main win (median of runs)."}

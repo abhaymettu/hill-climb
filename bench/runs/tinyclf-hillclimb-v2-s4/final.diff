@@ -1,0 +1,58 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..2a4b18f
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.81, "summary": "Replaced logistic regression with a standardized 64-unit tanh MLP trained with Adam and weight decay 1e-2 (nonlinear structure in the data)."}
+diff --git a/model.py b/model.py
+index 1954905..985acec 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,38 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _forward(p, X):
++    h = np.tanh(X @ p["W1"] + p["b1"])
++    return h, h @ p["W2"] + p["b2"]
++
++
++def fit(X, y, hidden=64, epochs=600, lr=0.01, wd=1e-2, seed=0):
++    rng = np.random.RandomState(seed)
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Xn = (X - mu) / sd
++    p = {"W1": rng.randn(X.shape[1], hidden) * 0.3, "b1": np.zeros(hidden),
++         "W2": rng.randn(hidden) * 0.1, "b2": 0.0}
++    m = {k: np.zeros_like(v, dtype=float) for k, v in p.items()}
++    v = {k: np.zeros_like(x, dtype=float) for k, x in p.items()}
++    n = len(y)
++    t = 0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        perm = rng.permutation(n)
++        for i in range(0, n, 128):
++            b = perm[i:i + 128]
++            h, z = _forward(p, Xn[b])
++            d = (1 / (1 + np.exp(-z)) - y[b]) / len(b)
++            dh = np.outer(d, p["W2"]) * (1 - h ** 2)
++            g = {"W1": Xn[b].T @ dh + wd * p["W1"], "b1": dh.sum(0),
++                 "W2": h.T @ d + wd * p["W2"], "b2": d.sum()}
++            t += 1
++            for k in p:
++                m[k] = 0.9 * m[k] + 0.1 * g[k]
++                v[k] = 0.999 * v[k] + 0.001 * g[k] ** 2
++                p[k] = p[k] - lr * (m[k] / (1 - 0.9 ** t)) / (np.sqrt(v[k] / (1 - 0.999 ** t)) + 1e-8)
++    return {"p": p, "mu": mu, "sd": sd}
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    _, z = _forward(model["p"], (X - model["mu"]) / model["sd"])
++    return (z > 0).astype(np.int64)

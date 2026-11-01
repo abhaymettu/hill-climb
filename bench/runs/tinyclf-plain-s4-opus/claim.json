@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8550, "summary": "Replaced plain logistic regression with standardized L1-regularized logistic regression on linear + pairwise-product features (lambda picked by 5-fold CV on train only)"}

@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8200, "summary": "Replaced logistic regression with a standardized 2-hidden-layer tanh MLP (Adam, L2, 5-net ensemble); hyperparameters chosen by 3-fold CV on train."}

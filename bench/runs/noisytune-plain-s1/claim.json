@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 211.4, "final": 129, "summary": "workers 16, cache_mb 1024, compression 1, prefetch 4, batch_size 64, pool_timeout_ms 50; p95 ~211 -> ~129 (mean of repeated noisy runs)"}

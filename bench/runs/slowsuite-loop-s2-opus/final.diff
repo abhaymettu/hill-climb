@@ -1,0 +1,124 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..0a635e1
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.4, "final": 1.38, "summary": "Retry tests inject a recording sleep (and now assert the backoff and that the default is time.sleep), the 400k-item catalog is built once per session with stock rolled back after each test, cyclic GC is off, and the build and value oracle are cheaper; 34 tests pass, no change to src/."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..39509fc 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -1,3 +1,4 @@
++import gc
+ import sys
+ from pathlib import Path
+ 
+@@ -6,19 +7,44 @@ import pytest
+ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+ from inventory import Catalog  # noqa: E402
+ 
++# The big catalog creates ~1M long-lived objects; cyclic GC passes over them dominate runtime
++# and nothing in the suite relies on cycle collection.
++gc.disable()
++
++
++BIG_N = 400000
++BIG_PRICES = [f"{r / 7:.2f}" for r in range(997)]
++
+ 
+ def build_big_catalog():
+     c = Catalog()
+-    for i in range(400000):
+-        c.add(f"SKU{i:06d}", f"{(i % 997) / 7:.2f}", i % 13, tags=("even",) if i % 2 == 0 else ("odd",))
++    add = c.add
++    prices = BIG_PRICES
++    even, odd = ("even",), ("odd",)
++    for i in range(BIG_N):
++        add(f"SKU{i:06d}", prices[i % 997], i % 13, tags=odd if i & 1 else even)
+     return c
+ 
+ 
+-@pytest.fixture
+-def big_catalog():
++@pytest.fixture(scope="session")
++def _big_catalog_shared():
+     return build_big_catalog()
+ 
+ 
++@pytest.fixture
++def big_catalog(_big_catalog_shared):
++    # Built once per session; stock levels are restored after each test so tests stay isolated.
++    c = _big_catalog_shared
++    skus = list(c.items)
++    qtys = [it["qty"] for it in c.items.values()]
++    yield c
++    if list(c.items) != skus:
++        c.items = build_big_catalog().items
++        return
++    for it, q in zip(c.items.values(), qtys):
++        it["qty"] = q
++
++
+ @pytest.fixture
+ def small_catalog():
+     c = Catalog()
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..0f7d41c 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -44,7 +44,11 @@ def test_json_roundtrip(small_catalog):
+ 
+ 
+ def test_big_value(big_catalog):
+-    expected = sum(Decimal(f"{(i % 997) / 7:.2f}") * (i % 13) for i in range(400000))
++    # Independent oracle: total quantity per price class, then one Decimal multiply per class.
++    qty_per_price = [0] * 997
++    for i in range(400000):
++        qty_per_price[i % 997] += i % 13
++    expected = sum(Decimal(f"{r / 7:.2f}") * q for r, q in enumerate(qty_per_price))
+     assert big_catalog.value() == expected
+ 
+ 
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..02a57d4 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,16 +46,24 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
++    calls = []
++    waits = []
++
+     def bad():
++        calls.append(1)
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert len(calls) == 3
++    assert waits == [0.4, 0.8]
+ 
+ 
+ def test_retry_backoff_schedule():
+@@ -67,3 +75,10 @@ def test_retry_backoff_schedule():
+     with pytest.raises(RuntimeError):
+         with_retry(bad, attempts=4, delay=0.5, sleep=waits.append)
+     assert waits == [0.5, 1.0, 2.0]
++
++
++def test_retry_default_sleep_is_real_sleep():
++    import inspect
++    import time
++
++    assert inspect.signature(with_retry).parameters["sleep"].default is time.sleep

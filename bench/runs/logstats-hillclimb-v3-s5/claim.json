@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3635, "final": 0.0063, "summary": "Replaced quadratic loops in analyze() with a single linear pass (dict counts, set of IPs, per-path latency lists sorted once, stable sort for top paths)."}

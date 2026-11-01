@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 8.26, "final": 0.46, "summary": "Retry tests now pass a recording sleep instead of really sleeping (and assert the backoff waits); the big-catalog fixture shrank from 400k to 20k SKUs, which still covers every price/qty combination; added a test that sleep defaults to time.sleep. 33 tests became 34, all passing, src/ untouched"}

@@ -1,0 +1,10 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:03:50 CST	2b34f3f	baseline	0.605	pass	baseline	mad 0, noise bar 0.0%
+1	2026-11-01 08:04:04 CST	a005a18	quadratic features + ridge least squares (lam=1, CV-chosen)	0.78	pass	keep	WIN: gain +28.9%, bar 0.0%
+2	2026-11-01 08:04:26 CST	bef57fd	select top-10 quad features, L2 logistic via IRLS (k,lam CV-chosen)	0.84	pass	keep	WIN: gain +7.7%, bar 0.0%
+3	2026-11-01 08:04:35 CST	7fc81ef	add sin/cos of standardized features to candidate pool	0.8625	pass	keep	WIN: gain +2.7%, bar 0.0%
+4	2026-11-01 08:04:45 CST	9c51e9a	add sin/cos(2z) to pool (CV 0.884)	0.9	pass	keep	WIN: gain +4.3%, bar 0.0%
+5	2026-11-01 08:04:56 CST	467d7bf	logistic lam 10 -> 1 (CV 0.888 vs 0.884)	0.895	pass	revert	LOSS: gain -0.6%, bar 0.0%
+6	2026-11-01 08:05:09 CST	448e311	top-k features k=8 (flat in CV)	0.8775	pass	revert	LOSS: gain -2.5%, bar 0.0%
+7	2026-11-01 08:05:10 CST	b9364b1	top-k features k=14 (flat in CV)	0.89	pass	revert	LOSS: gain -1.1%, bar 0.0%
+8	2026-11-01 08:05:11 CST	30e7a16	top-k features k=6 (flat in CV)	0.88	pass	revert	LOSS: gain -2.2%, bar 0.0%

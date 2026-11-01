@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:50:40 CST	40e3148	baseline	19.686	pass	baseline	mad 3.84
+1	2026-11-01 05:52:51 CST	a20ec6b	inject no-op sleep in retry tests	11.619	pass	revert	NOISE: gain +41.0%, bar 56.3%
+0	2026-11-01 05:59:01 CST	40e3148	baseline	46.102	pass	baseline	mad 9.03

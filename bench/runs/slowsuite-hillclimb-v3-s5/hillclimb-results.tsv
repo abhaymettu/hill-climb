@@ -1,0 +1,7 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:54:37 CST	e7df5c6	baseline	7.74	pass	baseline	mad 0.63, noise bar 24.7%
+1	2026-11-01 07:55:04 CST	48d2957	retry tests inject no-op sleep	4.76	pass	keep	WIN: gain +38.5%, bar 17.8%
+2	2026-11-01 07:55:25 CST	c0a804d	build big catalog once per session	2.95	pass	keep	WIN: gain +38.0%, bar 6.3%
+3	2026-11-01 07:55:47 CST	d5bc593	cheaper rollback of shared catalog	2.44	pass	keep	WIN: gain +17.3%, bar 5.0%
+4	2026-11-01 07:56:04 CST	4b32dc8	disable pytest cache plugin	2.47	pass	revert	NOISE: gain -1.2%, bar 5.0%
+5	2026-11-01 07:56:20 CST	68367ba	disable warnings plugin	2.54	pass	revert	NOISE: gain -4.1%, bar 5.0%

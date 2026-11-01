@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:26:33 CST	91a02df	baseline	2.4159	pass	baseline	mad 0.103
+1	2026-11-01 05:26:39 CST	3ce7463	group in one pass, sorted(), sets	0.015	pass	keep	WIN: gain +99.4%, bar 8.6%
+2	2026-11-01 05:26:47 CST	1649801	str.split and precompiled regexes in parse_line	0.0093	pass	keep	WIN: gain +38.0%, bar 4.0%
+3	2026-11-01 05:26:51 CST	082321f	tidy normalize_path with find and one join	0.0108	pass	revert	LOSS: gain -16.1%, bar 8.6%
+4	2026-11-01 05:26:55 CST	d202513	memoize normalize_path by raw path	0.0053	pass	keep	WIN: gain +43.0%, bar 2.1%
+5	2026-11-01 05:26:59 CST	6f87e9d	single pass, tuple records, no intermediate list	0.005	pass	revert	NOISE: gain +5.7%, bar 11.3%
+6	2026-11-01 05:27:05 CST	5373882	drop unused ts/method fields from record	0.0056	pass	revert	NOISE: gain -5.7%, bar 34.0%
+7	2026-11-01 05:27:11 CST	624bedc	single regex line split (big move)	0.0067	pass	revert	LOSS: gain -26.4%, bar 7.5%

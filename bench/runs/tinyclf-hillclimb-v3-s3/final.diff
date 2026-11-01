@@ -1,0 +1,43 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..08c1117
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.88, "summary": "Standardized features + squares, cubes, x0*x1 (plus CV-neutral sin/cos, x3*x4) in L2 logistic regression; the last two small gains (0.87->0.88) are within val noise."}
+diff --git a/model.py b/model.py
+index 1954905..05ddba7 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,23 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _feats(X, mu, sd):
++    Z = (X - mu) / sd
++    return np.hstack([Z, Z ** 2, Z ** 3, np.sin(Z), np.cos(Z), Z[:, :1] * Z[:, 1:2], Z[:, 3:4] * Z[:, 4:5], np.ones((len(Z), 1))])
++
++
++def fit(X, y, lr=0.5, epochs=1500, l2=0.01):
++    mu, sd = X.mean(0), X.std(0)
++    F = _feats(X, mu, sd)
++    w = np.zeros(F.shape[1])
++    reg = np.ones_like(w)
++    reg[-1] = 0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        p = 1 / (1 + np.exp(-F @ w))
++        w -= lr * (F.T @ (p - y) / len(y) + l2 * reg * w)
++    return mu, sd, w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, w = model
++    return (_feats(X, mu, sd) @ w > 0).astype(np.int64)

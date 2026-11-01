@@ -1,0 +1,7 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:00:11 CST	ceabbee	baseline	7.05	pass	baseline	mad 0.03, noise bar 1.0%
+1	2026-11-01 08:00:47 CST	332527c	inject no-op sleep in retry tests	4.42	pass	keep	WIN: gain +37.3%, bar 5.0%
+2	2026-11-01 08:01:11 CST	a5adaf1	session-scoped big catalog	2.44	pass	keep	WIN: gain +44.8%, bar 5.0%
+3	2026-11-01 08:01:39 CST	d757564	periodic expected value in test_big_value	2.47	pass	revert	NOISE: gain -1.2%, bar 7.4%
+4	2026-11-01 08:02:02 CST	cc5b304	gc off while building big catalog	2.43	pass	revert	NOISE: gain +0.4%, bar 5.0%
+5	2026-11-01 08:02:25 CST	bc2f414	pytest.ini disabling cacheprovider (big-move attempt)	2.47	pass	revert	NOISE: gain -1.2%, bar 5.0%

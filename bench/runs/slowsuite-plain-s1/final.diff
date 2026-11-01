@@ -1,0 +1,66 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..ef99e15
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.8, "final": 2.8, "summary": "Build the 400k-item catalog once per session (restoring mutated items) and inject a no-op sleep into the real-sleep retry tests."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..3e2417e 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,8 +14,9 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
++@pytest.fixture(scope="session")
+ def big_catalog():
++    # Built once and shared; tests that mutate it must restore it.
+     return build_big_catalog()
+ 
+ 
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..bf6c1c2 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -54,9 +54,14 @@ def test_big_tagged(big_catalog):
+ 
+ 
+ def test_big_take(big_catalog):
+-    assert big_catalog.take("SKU000012", 12) == 0
+-    with pytest.raises(OutOfStock):
+-        big_catalog.take("SKU000013", 1)
++    before = {k: big_catalog.items[k]["qty"] for k in ("SKU000012", "SKU000013")}
++    try:
++        assert big_catalog.take("SKU000012", 12) == 0
++        with pytest.raises(OutOfStock):
++            big_catalog.take("SKU000013", 1)
++    finally:
++        for k, q in before.items():
++            big_catalog.items[k]["qty"] = q
+ 
+ 
+ def test_big_roundtrip(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..16524f3 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,7 +46,7 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=lambda s: None) == "ok"
+     assert len(calls) == 3
+ 
+ 
+@@ -55,7 +55,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda s: None)
+ 
+ 
+ def test_retry_backoff_schedule():

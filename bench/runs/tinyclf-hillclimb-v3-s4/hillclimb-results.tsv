@@ -1,0 +1,9 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:00:59 CST	b9f10a0	baseline	0.605	pass	baseline	mad 0, noise bar 0.0%
+1	2026-11-01 08:01:18 CST	2b8af65	standardize + quadratic features logistic	0.78	pass	keep	WIN: gain +28.9%, bar 1.0%
+2	2026-11-01 08:01:40 CST	793d8ce	l2=5 epochs=1500 (chosen by train CV)	0.8125	pass	keep	WIN: gain +4.2%, bar 1.0%
+3	2026-11-01 08:02:25 CST	6e4f34f	add cubic terms	0.825	pass	keep	WIN: gain +1.5%, bar 1.0%
+4	2026-11-01 08:02:37 CST	5548c42	add abs terms	0.8175	pass	revert	NOISE: gain -0.9%, bar 1.0%
+5	2026-11-01 08:02:38 CST	b0478ae	epochs 3000	0.82	pass	revert	NOISE: gain -0.6%, bar 1.0%
+6	2026-11-01 08:02:42 CST	d9df0bb	lr 0.2	0.82	pass	revert	NOISE: gain -0.6%, bar 1.0%
+7	2026-11-01 08:02:43 CST	fe8084e	add quartic terms	0.7725	pass	revert	LOSS: gain -6.4%, bar 1.0%

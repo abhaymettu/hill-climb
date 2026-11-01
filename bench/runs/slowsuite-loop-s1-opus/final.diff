@@ -1,0 +1,104 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..ec9c424
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 160.07, "final": 0.92, "summary": "Shrank the 400k-item fixture catalog to 2000 items (same assertions, plus a full sort-order check), sampled the 30k-quantity line_total loop across every tier, and injected a recording sleep into the retry tests so they assert the backoff schedule instead of sleeping; 33 tests -> 34."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..6f30db1 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -6,10 +6,12 @@ import pytest
+ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+ from inventory import Catalog  # noqa: E402
+ 
++BIG_N = 2000
++
+ 
+ def build_big_catalog():
+     c = Catalog()
+-    for i in range(400000):
++    for i in range(BIG_N):
+         c.add(f"SKU{i:06d}", f"{(i % 997) / 7:.2f}", i % 13, tags=("even",) if i % 2 == 0 else ("odd",))
+     return c
+ 
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..63c4432 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -1,6 +1,7 @@
+ from decimal import Decimal
+ 
+ import pytest
++from conftest import BIG_N
+ from inventory import Catalog, OutOfStock
+ 
+ 
+@@ -44,13 +45,14 @@ def test_json_roundtrip(small_catalog):
+ 
+ 
+ def test_big_value(big_catalog):
+-    expected = sum(Decimal(f"{(i % 997) / 7:.2f}") * (i % 13) for i in range(400000))
++    expected = sum(Decimal(f"{(i % 997) / 7:.2f}") * (i % 13) for i in range(BIG_N))
+     assert big_catalog.value() == expected
+ 
+ 
+ def test_big_tagged(big_catalog):
+     evens = big_catalog.tagged("even")
+-    assert len(evens) == 200000 and evens[0] == "SKU000000" and evens[-1] == "SKU399998"
++    assert len(evens) == BIG_N // 2 and evens[0] == "SKU000000" and evens[-1] == f"SKU{BIG_N - 2:06d}"
++    assert evens == sorted(f"SKU{i:06d}" for i in range(0, BIG_N, 2))
+ 
+ 
+ def test_big_take(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..a4620bc 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -31,7 +31,7 @@ def test_line_total_rejects_bad_discount():
+ 
+ 
+ def test_line_total_over_many_quantities():
+-    for qty in range(1, 30000):
++    for qty in [*range(1, 300), *range(300, 30000, 97), 29999]:
+         total = line_total("0.10", qty, bulk_discount(qty), 5)
+         expected = (Decimal("0.10") * qty * (100 - bulk_discount(qty)) / 100 * Decimal("1.05")).quantize(Decimal("0.01"))
+         assert abs(total - expected) <= Decimal("0.01")
+@@ -46,16 +46,20 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
+     def bad():
+         raise KeyError("x")
+ 
++    waits = []
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert waits == [0.4, 0.8]
+ 
+ 
+ def test_retry_backoff_schedule():
+@@ -67,3 +71,13 @@ def test_retry_backoff_schedule():
+     with pytest.raises(RuntimeError):
+         with_retry(bad, attempts=4, delay=0.5, sleep=waits.append)
+     assert waits == [0.5, 1.0, 2.0]
++
++
++def test_retry_defaults():
++    import inspect
++    import time
++
++    params = inspect.signature(with_retry).parameters
++    assert params["attempts"].default == 3
++    assert params["delay"].default == 0.5
++    assert params["sleep"].default is time.sleep

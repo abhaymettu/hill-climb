@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.9000, "summary": "Replaced raw-feature gradient-descent logistic regression with Newton-fit L2 logistic regression on 7 engineered features (x0*x1, sin(2*x2), x3^2, x4^2, x5, |x6|, x7) found via spline/quadratic analysis under 5-fold CV on train; dropped the noise inputs."}

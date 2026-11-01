@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 188.5, "final": 111.4, "summary": "workers 12, batch_size 64, cache_mb 1200, compression 8 (means of 5 runs)"}

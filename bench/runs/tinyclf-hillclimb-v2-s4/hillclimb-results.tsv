@@ -1,0 +1,5 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:17:15 CST	3a1f239	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:17:34 CST	3e5bd41	standardized tanh MLP with Adam (big move)	0.76	pass	keep	WIN: gain +25.6%, bar 1.0%
+2	2026-11-01 05:17:46 CST	8240de9	weight decay 1e-2 (chosen by train CV)	0.81	pass	keep	WIN: gain +6.6%, bar 1.0%
+3	2026-11-01 05:18:08 CST	1e22fd5	ensemble of 5 seeds	0.8175	pass	revert	NOISE: gain +0.9%, bar 1.0%

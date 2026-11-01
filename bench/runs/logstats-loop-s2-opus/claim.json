@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 18.7044, "final": 0.0059, "summary": "Rewrote analyze() as one pass that groups by the raw strings, caches status/latency parsing, uses a regex normalize_path, and sorts each path's latencies once, replacing O(n^2) loops; checksum unchanged"}

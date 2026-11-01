@@ -1,0 +1,12 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:44:28 CST	b63fd0d	baseline	192.46	pass	baseline	
+1	2026-11-01 07:44:28 CST	f1547e8	workers 8->24	187.79	pass	revert	{"verdict": "NOISE", "best": 192.46, "candidate": 187.79, "gain_rel": 0.0243, "bar_rel": 0.1088, "noise_rel": 0.1088, "min_delta": 0.02, "direction": "min"} 
+2	2026-11-01 07:44:32 CST	8e27172	cache_mb 128->1024	136.6	pass	keep	{"verdict": "WIN", "best": 192.46, "candidate": 136.6, "gain_rel": 0.2902, "bar_rel": 0.1494, "noise_rel": 0.1494, "min_delta": 0.02, "direction": "min"} 
+3	2026-11-01 07:44:32 CST	1555459	batch_size 16->64	120.21	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 120.21, "gain_rel": 0.12, "bar_rel": 0.1321, "noise_rel": 0.1321, "min_delta": 0.02, "direction": "min"} 
+4	2026-11-01 07:44:33 CST	9b3bdb4	prefetch 0->8	125.03	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 125.03, "gain_rel": 0.0847, "bar_rel": 0.1757, "noise_rel": 0.1757, "min_delta": 0.02, "direction": "min"} 
+5	2026-11-01 07:44:33 CST	1dab89e	compression 6->0	154.26	pass	revert	{"verdict": "LOSS", "best": 136.6, "candidate": 154.26, "gain_rel": -0.1293, "bar_rel": 0.095, "noise_rel": 0.095, "min_delta": 0.02, "direction": "min"} 
+6	2026-11-01 07:44:37 CST	8dab04a	cache_mb 1024->1600	147.16	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 147.16, "gain_rel": -0.0773, "bar_rel": 0.1107, "noise_rel": 0.1107, "min_delta": 0.02, "direction": "min"} 
+7	2026-11-01 07:44:37 CST	5c76c67	compression 6->3	138.95	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 138.95, "gain_rel": -0.0172, "bar_rel": 0.1272, "noise_rel": 0.1272, "min_delta": 0.02, "direction": "min"} 
+8	2026-11-01 07:44:38 CST	221d9e7	pool_timeout_ms 200->50	143.72	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 143.72, "gain_rel": -0.0521, "bar_rel": 0.1322, "noise_rel": 0.1322, "min_delta": 0.02, "direction": "min"} 
+9	2026-11-01 07:44:38 CST	e7870e3	batch_size 16->128	132.07	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 132.07, "gain_rel": 0.0332, "bar_rel": 0.1495, "noise_rel": 0.1495, "min_delta": 0.02, "direction": "min"} 
+10	2026-11-01 07:44:41 CST	10f2315	big-move: batch 64 + prefetch 8	132.69	pass	revert	{"verdict": "NOISE", "best": 136.6, "candidate": 132.69, "gain_rel": 0.0286, "bar_rel": 0.218, "noise_rel": 0.218, "min_delta": 0.02, "direction": "min"} 

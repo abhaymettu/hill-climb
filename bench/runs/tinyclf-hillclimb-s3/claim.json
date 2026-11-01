@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8475, "summary": "Standardized logistic regression on quadratic features of the first 8 inputs (dropping noise columns) lifts val_acc 0.605 -> 0.8475"}

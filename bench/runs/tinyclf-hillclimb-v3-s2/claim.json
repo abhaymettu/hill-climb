@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.9, "summary": "Top-10 selected quadratic+sin/cos(z,2z) features with L2 logistic regression (IRLS); settings picked by CV on train"}

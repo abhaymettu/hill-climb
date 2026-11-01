@@ -1,0 +1,5 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:38:57 CST	8d14ee3	baseline	0.605	pass	baseline	mad 0
+1	2026-11-01 05:39:23 CST	1ada307	standardize + quadratic features, l2 logistic (CV-chosen on train)	0.795	pass	keep	WIN: gain +31.4%, bar 0.5%
+2	2026-11-01 05:40:18 CST	51dfebd	select top-10 terms from first-pass fit, refit	0.85	pass	keep	WIN: gain +6.9%, bar 0.5%
+3	2026-11-01 05:40:41 CST	7979549	add cubic and abs features, keep top 20	0.8525	pass	revert	NOISE: gain +0.3%, bar 0.5%

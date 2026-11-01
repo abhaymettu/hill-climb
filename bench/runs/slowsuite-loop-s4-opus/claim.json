@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.38, "final": 1.49, "summary": "Retry tests use an injected recording sleep (now also checking the backoff waits), the 400k catalog is built once per session (the take test restores its changes), cyclic GC is off during the run, and the test helpers precompute prices; src/ untouched, still 33 tests."}

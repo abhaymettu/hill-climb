@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4731, "final": 0.0049, "summary": "Rewrote analyze() as a single pass with dict/set counting, one sort for p95, str.split and cached path normalization; checksum unchanged"}

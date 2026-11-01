@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 191.05, "final": 132.43, "summary": "cache_mb 128 -> 1600 (within the 2048 MB cap) cut p95; other knobs were noise or worse"}

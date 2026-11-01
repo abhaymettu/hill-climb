@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.8, "final": 2.9, "summary": "Build the 400k-item catalog once per session (take test restores its mutations) and inject a no-op sleep into the retry tests; no test removed or weakened."}

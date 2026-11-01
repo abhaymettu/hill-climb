@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4465, "final": 0.0043, "summary": "analyze() rewritten as a single pass with dict/set aggregation, sorted() instead of insertion/bubble sorts, memoized path normalization and regex-free validation; ~570x faster, same output (checksum, tests, fuzz vs original)."}

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 194.6, "final": 100.5, "summary": "workers 8->12, batch_size 16->64, cache_mb 128->1472 (mean of repeated runs; cache size was the main lever)"}

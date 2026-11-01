@@ -1,0 +1,39 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..e5cd8f5
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.7975, "summary": "Replaced logistic regression with standardized RBF kernel ridge classifier (hyperparameters chosen by train-only 5-fold CV)."}
+diff --git a/model.py b/model.py
+index 1954905..94f5a8e 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,18 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _k(A, B, g):
++    d = (A * A).sum(1)[:, None] + (B * B).sum(1)[None] - 2 * A @ B.T
++    return np.exp(-g * np.maximum(d, 0))
++
++
++def fit(X, y, g=0.02, lam=0.3):
++    mu, sd = X.mean(0), X.std(0) + 1e-9
++    Z = (X - mu) / sd
++    a = np.linalg.solve(_k(Z, Z, g) + lam * np.eye(len(Z)), 2.0 * y - 1)
++    return mu, sd, Z, a, g
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, Z, a, g = model
++    return (_k((X - mu) / sd, Z, g) @ a > 0).astype(np.int64)

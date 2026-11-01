@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4975, "final": 0.0089, "summary": "Single-pass analyze with dict/set aggregation, cached path normalization, sort-once percentiles"}

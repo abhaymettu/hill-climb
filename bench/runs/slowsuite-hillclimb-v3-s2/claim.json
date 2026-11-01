@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.06, "final": 2.68, "summary": "Stubbed real sleeps in retry tests via the sleep= parameter; built the 400k-item catalog once per session (take test restores its mutations). Same 33 tests, same assertions, src untouched."}

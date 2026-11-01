@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.8499, "final": 0.0032, "summary": "Replaced quadratic counting/dedup/bubble-sort/insertion-sort with single-pass dicts, sets and sorted(); memoized status/latency token checks; normalize each distinct raw path once with a faster normalizer (~890x faster, identical output)."}

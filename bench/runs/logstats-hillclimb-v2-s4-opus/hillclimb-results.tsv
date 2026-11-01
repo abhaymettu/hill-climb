@@ -1,0 +1,20 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:46:28 CST	538e189	baseline	2.4108	pass	baseline	mad 0.0401
+1	2026-11-01 07:46:40 CST	c63d82a	linear-time aggregation with dicts/sets/sorted	0.0144	pass	keep	WIN: gain +99.4%, bar 3.3%
+2	2026-11-01 07:46:46 CST	652f351	cache normalize_path per raw path	0.0128	pass	keep	WIN: gain +11.1%, bar 2.0%
+3	2026-11-01 07:46:52 CST	c63fc7b	str.split and precompiled regexes in parse_line	0.0071	pass	keep	WIN: gain +44.5%, bar 2.0%
+4	2026-11-01 07:47:02 CST	8b3c3ba	fuse parsing and aggregation into one pass, no record dicts	0.0062	pass	keep	WIN: gain +12.7%, bar 2.8%
+5	2026-11-01 07:47:10 CST	8440e36	cache status/latency validation+int per distinct string	0.0049	pass	keep	WIN: gain +21.0%, bar 3.2%
+6	2026-11-01 07:47:18 CST	f008663	count raw users, casefold-merge at end	0.0048	pass	keep	WIN: gain +2.0%, bar 2.0%
+6	2026-11-01 07:47:32 CST	8440e36	recheck r06 back-to-back (9 runs)	0.0048	pass	revert	NOISE on recheck: gain 2.0% vs bar 8.2%; reverted r06
+8	2026-11-01 07:47:59 CST	fab032d	normalize_path: isascii()+isdigit() instead of per-char all()	0.0037	pass	keep	WIN: gain +24.5%, bar 4.1%
+7	2026-11-01 07:48:12 CST	fab032d	(no change; hc round crashed on hand-edited best.json)	-	-	void	tooling error, best.json restored; change re-run as r08
+10	2026-11-01 07:48:12 CST	14adcac	group latencies by raw path, merge by normalized path at end	0.0036	pass	revert	NOISE: gain +2.7%, bar 5.4%
+11	2026-11-01 07:48:34 CST	2a05909	normalize_path via partition + one regex sub	0.004	pass	revert	LOSS: gain -8.1%, bar 5.4%
+12	2026-11-01 07:48:53 CST	4cb4d53	columnar: map split, zip(*rows), Counter/set/dict caches	0.004	pass	revert	LOSS: gain -8.1%, bar 5.4%
+13	2026-11-01 07:49:07 CST	a06bfe7	tuple-unpack fields, bind hot dict/set methods to locals	0.0034	pass	keep	WIN: gain +8.1%, bar 5.4%
+14	2026-11-01 07:49:13 CST	cfff901	cache is-error bool per status string, add it	0.0035	pass	revert	LOSS: gain -2.9%, bar 2.0%
+15	2026-11-01 07:49:20 CST	b305da9	derive requests from user counts instead of per-line counter	0.0034	pass	revert	NOISE: gain +0.0%, bar 2.0%
+16	2026-11-01 07:49:27 CST	d6baee1	try/except KeyError for status/latency caches	0.0034	pass	revert	NOISE: gain +0.0%, bar 2.0%
+17	2026-11-01 07:49:54 CST	abbc4e1	single fullmatch regex per line for split+validation	0.0048	pass	revert	LOSS: gain -41.2%, bar 2.0%, big-move
+18	2026-11-01 07:50:08 CST	6878497	normalize_path segments via list comprehension	0.0034	pass	revert	NOISE: gain +0.0%, bar 2.0%

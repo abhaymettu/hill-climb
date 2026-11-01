@@ -1,0 +1,42 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..6c94bbc
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8000, "summary": "Replaced linear logistic regression with RBF kernel ridge on standardized features (hyperparams chosen by 5-fold CV on train)"}
+diff --git a/model.py b/model.py
+index 1954905..0aad924 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,21 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _sqdist(P, Q):
++    return (P ** 2).sum(1)[:, None] + (Q ** 2).sum(1)[None] - 2 * P @ Q.T
++
++
++def fit(X, y, gamma=0.3, lam=0.1):
++    """Kernel ridge regression with an RBF kernel on standardized features."""
++    mu, sd = X.mean(0), X.std(0) + 1e-9
++    A = (X - mu) / sd
++    K = np.exp(-gamma * _sqdist(A, A) / A.shape[1])
++    alpha = np.linalg.solve(K + lam * np.eye(len(A)), 2.0 * y - 1)
++    return mu, sd, A, alpha, gamma
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, A, alpha, gamma = model
++    B = (X - mu) / sd
++    K = np.exp(-gamma * _sqdist(B, A) / A.shape[1])
++    return (K @ alpha > 0).astype(np.int64)

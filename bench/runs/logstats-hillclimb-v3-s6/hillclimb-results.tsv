@@ -1,0 +1,10 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:54:01 CST	f1fbe1e	baseline	2.4731	pass	baseline	mad 0.0521, noise bar 5.0%
+1	2026-11-01 07:54:09 CST	4f46540	single-pass analyze, dict counts, sort once	0.0092	pass	keep	WIN: gain +99.6%, bar 3.5%
+2	2026-11-01 07:54:13 CST	d0e6aaa	str.split instead of regex split	0.0052	pass	keep	WIN: gain +43.5%, bar 5.7%
+3	2026-11-01 07:54:18 CST	41da691	string checks for latency	0.0052	pass	revert	NOISE: gain +0.0%, bar 4.5%
+4	2026-11-01 07:54:23 CST	a5f4e78	derive counts from latency lists	0.0055	pass	revert	LOSS: gain -5.8%, bar 4.5%
+5	2026-11-01 07:54:27 CST	38963a2	single regex for status+latency (big-move)	0.0049	pass	keep	WIN: gain +5.8%, bar 4.5%
+6	2026-11-01 07:54:31 CST	a135124	bound ip add	0.0049	pass	revert	NOISE: gain +0.0%, bar 4.8%
+7	2026-11-01 07:54:35 CST	197e217	users count via in-check	0.005	pass	revert	NOISE: gain -2.0%, bar 4.8%
+8	2026-11-01 07:54:36 CST	bb9b7cc	string compare status	0.0048	pass	revert	NOISE: gain +2.0%, bar 4.8%

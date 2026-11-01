@@ -1,0 +1,167 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..0fbd07e
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "seconds", "baseline": 3.0693, "final": 0.0043, "summary": "Single-pass analyze() with dict/set counting, cached status/latency validation, per-raw-path grouping merged after one normalize per unique path, regex-based normalize_path, and sorted() for top paths and p95; output checksum unchanged."}
+diff --git a/logstats.py b/logstats.py
+index e1e3192..039f273 100644
+--- a/logstats.py
++++ b/logstats.py
+@@ -50,18 +50,11 @@ def parse_line(line):
+     }
+ 
+ 
++_ID_SEGMENT_RE = re.compile(r"(?<![^/])[0-9]+(?![^/])")
++
++
+ def normalize_path(path):
+-    if "?" in path:
+-        path = path[: path.index("?")]
+-    path = path.casefold()
+-    segments = path.split("/")
+-    out = []
+-    for seg in segments:
+-        if seg != "" and all(c in "0123456789" for c in seg):
+-            out.append(":id")
+-        else:
+-            out.append(seg)
+-    path = "/".join(out)
++    path = _ID_SEGMENT_RE.sub(":id", path.partition("?")[0].casefold())
+     if path.endswith("/") and path != "/":
+         path = path[:-1]
+     return path
+@@ -78,60 +71,89 @@ def percentile_nearest_rank(values, pct):
+     return ordered[max(rank, 1) - 1]
+ 
+ 
++def _status_class(status):
++    # None if malformed, else whether the status counts as an error (>= 500).
++    if status.isdecimal() or (status[:1] == "-" and status[1:].isdecimal()):
++        return int(status) >= 500
++    return None
++
++
++def _latency_value(latency):
++    digits = latency[:-2]
++    if latency[-2:] == "ms" and digits.isdecimal():
++        return int(digits)
++    return None
++
++
+ def analyze(lines):
+-    records = []
+     malformed = 0
++    errors = 0
++    raw_users = {}
++    ips = set()
++    add_ip = ips.add
++    raw_paths = {}
++    status_cache = {}
++    latency_cache = {}
+     for line in lines:
+-        if line.strip() == "":
++        parts = line.split()
++        if len(parts) != 7:
++            if parts:
++                malformed += 1
+             continue
+-        rec = parse_line(line)
+-        if rec is None:
++        _, ip, user, _, raw, status, latency = parts
++        try:
++            is_error = status_cache[status]
++        except KeyError:
++            is_error = status_cache[status] = _status_class(status)
++        if is_error is None:
+             malformed += 1
+-        else:
+-            records.append(rec)
+-
++            continue
++        try:
++            ms = latency_cache[latency]
++        except KeyError:
++            ms = latency_cache[latency] = _latency_value(latency)
++        if ms is None:
++            malformed += 1
++            continue
++        if is_error:
++            errors += 1
++        try:
++            raw_users[user] += 1
++        except KeyError:
++            raw_users[user] = 1
++        add_ip(ip)
++        try:
++            raw_paths[raw].append(ms)
++        except KeyError:
++            raw_paths[raw] = [ms]
++
++    # Dict insertion order follows first appearance, so merging in order keeps first-seen order.
+     users = {}
+-    for rec in records:
+-        name = rec["user"].casefold()
+-        count = 0
+-        for other in records:
+-            if other["user"].casefold() == name:
+-                count += 1
+-        users[name] = count
+-
+-    ips = []
+-    for rec in records:
+-        if rec["ip"] not in ips:
+-            ips.append(rec["ip"])
++    for user, n in raw_users.items():
++        name = user.casefold()
++        users[name] = users.get(name, 0) + n
++    latencies = {}
++    for raw, lat in raw_paths.items():
++        p = normalize_path(raw)
++        merged = latencies.get(p)
++        if merged is None:
++            latencies[p] = lat
++        else:
++            merged += lat
+ 
+-    errors = 0
+-    for rec in records:
+-        if rec["status"] >= 500:
+-            errors += 1
+-    error_rate = round(errors / len(records), 4) if records else 0.0
+-
+-    order = []
+-    counts = {}
+-    for rec in records:
+-        p = normalize_path(rec["path"])
+-        if p not in counts:
+-            order.append(p)
+-            counts[p] = 0
+-        counts[p] += 1
+-    ranked = list(order)
+-    for i in range(len(ranked)):
+-        for j in range(len(ranked) - 1 - i):
+-            if counts[ranked[j]] < counts[ranked[j + 1]]:
+-                ranked[j], ranked[j + 1] = ranked[j + 1], ranked[j]
+-    top_paths = [[p, counts[p]] for p in ranked[:5]]
++    requests = sum(raw_users.values())
++    error_rate = round(errors / requests, 4) if requests else 0.0
++    ranked = sorted(latencies, key=lambda p: -len(latencies[p]))
++    top_paths = [[p, len(latencies[p])] for p in ranked[:5]]
+ 
+     p95 = {}
+-    for p in order:
+-        lat = [rec["latency"] for rec in records if normalize_path(rec["path"]) == p]
+-        p95[p] = percentile_nearest_rank(lat, 95)
++    for p, lat in latencies.items():
++        lat.sort()
++        rank = math.ceil(95 / 100 * len(lat))
++        p95[p] = lat[max(rank, 1) - 1]
+ 
+     return {
+-        "requests": len(records),
++        "requests": requests,
+         "malformed": malformed,
+         "users": users,
+         "unique_ips": len(ips),

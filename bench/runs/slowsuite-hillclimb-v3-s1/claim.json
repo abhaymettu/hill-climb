@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.05, "final": 2.5, "summary": "Fake sleeps in retry tests (inject sleep=) and share one session-scoped big catalog (take test restores state); 33 tests, assertions unchanged, src untouched"}

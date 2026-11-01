@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.5064, "final": 0.0066, "summary": "Rewrote analyze() as a single pass with dict/set counters, cached path normalization and per-path sort for p95, replacing the quadratic scans and insertion sort."}

@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.88, "summary": "Standardized features + squares, cubes, x0*x1 (plus CV-neutral sin/cos, x3*x4) in L2 logistic regression; the last two small gains (0.87->0.88) are within val noise."}

@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.66, "final": 3.82, "summary": "Build the 400k-item catalog once per session (qty restored after each test) and stub real sleeps in the retry tests; no assertions changed, 33 tests still pass"}

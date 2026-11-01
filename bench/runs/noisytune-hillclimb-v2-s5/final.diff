@@ -1,0 +1,7 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..2cc514e
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "p95_ms", "baseline": 177.63, "final": 177.63, "summary": "No config change beat baseline beyond noise (MAD ~8ms, bars 15-27%); config.py left at original values."}

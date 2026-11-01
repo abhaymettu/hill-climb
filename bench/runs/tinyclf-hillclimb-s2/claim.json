@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8750, "summary": "Standardized features + squares, cubes and pairwise products with L1-regularized logistic regression (numpy only, ~0.2s train)"}

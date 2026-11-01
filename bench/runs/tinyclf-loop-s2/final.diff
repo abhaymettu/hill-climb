@@ -1,0 +1,47 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..5c68778
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8550, "summary": "Logistic regression on a sparse nonlinear feature set (x0*x1, squares of x3/x4/x6, linear x2/x5/x7), standardized, L2-regularized"}
+diff --git a/model.py b/model.py
+index 1954905..73fdd05 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,27 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _feats(X):
++    # Structure found from a quadratic-feature fit: a pairwise product, a few squares, a few linear terms.
++    return np.stack([
++        X[:, 0] * X[:, 1], X[:, 3] ** 2, X[:, 4] ** 2, X[:, 6] ** 2,
++        X[:, 5], X[:, 2], X[:, 7],
++    ], 1)
++
++
++def fit(X, y, l2=0.01, lr=0.2, epochs=3000):
++    F = _feats(X)
++    mu, sd = F.mean(0), F.std(0) + 1e-9
++    F = (F - mu) / sd
++    w = np.zeros(F.shape[1])
++    b = 0.0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        p = 1 / (1 + np.exp(-(F @ w + b)))
++        w -= lr * (F.T @ (p - y) / len(y) + l2 * w)
++        b -= lr * (p - y).mean()
++    return w, b, mu, sd
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    w, b, mu, sd = model
++    return (((_feats(X) - mu) / sd) @ w + b > 0).astype(np.int64)

@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 192.9, "final": 125.24, "summary": "cache_mb 128->1600 and batch_size 16->64; other knobs were noise or worse"}

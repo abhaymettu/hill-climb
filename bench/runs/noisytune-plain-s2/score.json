@@ -1,0 +1,16 @@
+{
+  "runs": true,
+  "visible_ok": true,
+  "hidden_ok": true,
+  "score": 117.90449783982015,
+  "config": {
+    "workers": 16,
+    "batch_size": 64,
+    "cache_mb": 1200,
+    "compression": 6,
+    "prefetch": 2,
+    "pool_timeout_ms": 100
+  },
+  "tampered": [],
+  "gates_ok": true
+}

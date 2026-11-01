@@ -1,0 +1,15 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:58:02 CST	8c2bdc4	baseline	188.47	pass	baseline	mad 7.23, noise bar 6.7%
+1	2026-11-01 07:58:12 CST	ddd1cd0	compression=1	194.79	pass	revert	NOISE: gain -3.4%, bar 5.9%
+2	2026-11-01 07:58:22 CST	e17e9f2	workers=16	179.64	pass	revert	NOISE: gain +4.7%, bar 9.2%
+3	2026-11-01 07:58:23 CST	06717c1	prefetch=4	188.23	pass	revert	NOISE: gain +0.1%, bar 8.6%
+4	2026-11-01 07:58:24 CST	5d71fd4	batch_size=32	188.33	pass	revert	NOISE: gain +0.1%, bar 6.2%
+5	2026-11-01 07:58:25 CST	3ce390a	pool_timeout_ms=50	193.52	pass	revert	NOISE: gain -2.7%, bar 9.1%
+0	2026-11-01 07:58:33 CST	8c2bdc4	baseline	188.32	pass	baseline	mad 17.3, noise bar 16.1%
+7	2026-11-01 07:58:33 CST	9a4a22b	big-move: workers24 cache768 prefetch4 batch32	144.3	pass	keep	WIN: gain +23.4%, bar 11.6%
+8	2026-11-01 07:58:37 CST	36f80ff	prefetch=8	142.18	pass	revert	NOISE: gain +1.5%, bar 7.4%
+9	2026-11-01 07:58:38 CST	27bd5bb	workers=32		fail	revert	LOSS: gate failed: python -m pytest -q: >   ??? E   ValueError: memory budget exceeded: cache_mb + 48 * workers must be <= 2048  hidden/simsvc.py:17: ValueError =========================== short test summar
+10	2026-11-01 07:58:39 CST	929478e	cache_mb=400	163.76	pass	revert	LOSS: gain -13.5%, bar 12.1%
+11	2026-11-01 07:58:40 CST	d1749c3	compression=3	150.33	pass	revert	NOISE: gain -4.2%, bar 6.2%
+12	2026-11-01 07:58:41 CST	d4d7d4b	pool_timeout_ms=50	154.97	pass	revert	LOSS: gain -7.4%, bar 3.4%
+13	2026-11-01 07:58:42 CST	c3b1e68	batch_size=64	142.36	pass	revert	NOISE: gain +1.3%, bar 8.1%

@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.548, "final": 0.0034, "summary": "Replaced quadratic loops in analyze() with a single pass using dicts/sets, cached validation and path normalization per distinct string, and used sorted() for ranking and percentiles; output checksum unchanged."}

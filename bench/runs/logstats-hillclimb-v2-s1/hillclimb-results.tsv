@@ -1,0 +1,12 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:19:05 CST	5ab3595	baseline	2.5544	pass	baseline	mad 0.0649
+1	2026-11-01 05:19:23 CST	b6aafb1	users via single-pass count	1.4829	pass	keep	WIN: gain +41.9%, bar 5.4%
+2	2026-11-01 05:19:28 CST	a14854f	group latencies per path once	0.0622	pass	keep	WIN: gain +95.8%, bar 2.0%
+3	2026-11-01 05:19:32 CST	0801573	sorted() for percentile	0.0421	pass	keep	WIN: gain +32.3%, bar 6.1%
+4	2026-11-01 05:19:34 CST	0695f89	set for unique ips	0.0177	pass	keep	WIN: gain +58.0%, bar 2.9%
+5	2026-11-01 05:19:37 CST	c91a23c	stable sorted for top paths		fail	revert	LOSS: gate failed: python -m pytest -q tests: est-rank E                                        ^ E   SyntaxError: invalid decimal literal =========================== short test summary info ===============
+6	2026-11-01 05:19:41 CST	32ebf15	stable sorted for top paths (fix slice)	0.0159	pass	revert	NOISE: gain +10.2%, bar 15.8%
+7	2026-11-01 05:19:49 CST	1311bc3	split(), precompiled regex, cached path normalization	0.0067	pass	keep	WIN: gain +62.2%, bar 6.8%, big-move
+8	2026-11-01 05:19:56 CST	6d2f224	inline tuple-free parsing in analyze	0.0059	pass	keep	WIN: gain +11.9%, bar 2.0%
+9	2026-11-01 05:19:59 CST	15d8f0b	sum() for error count	0.0063	pass	revert	LOSS: gain -6.8%, bar 2.0%
+10	2026-11-01 05:20:03 CST	171dc72	Counter for users	0.006	pass	revert	NOISE: gain -1.7%, bar 2.0%

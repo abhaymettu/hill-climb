@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8575, "summary": "Logistic regression on raw features plus x0*x1 and squared terms of x2-x7 (L2, 5000 GD steps); train ~0.1s"}

@@ -1,0 +1,27 @@
+12 runs to do
+{"task": "noisytune", "arm": "plain", "seed": 2, "wall_seconds": 30.0, "num_turns": 9, "cost_usd": 0.0774079, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 4, "wall_seconds": 31.5, "num_turns": 9, "cost_usd": 0.07689199999999999, "subtype": "success"}
+{"task": "noisytune", "arm": "plain", "seed": 6, "wall_seconds": 21.6, "num_turns": 7, "cost_usd": 0.0644222, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 3, "wall_seconds": 30.6, "num_turns": 10, "cost_usd": 0.07232460000000002, "subtype": "success"}
+{"task": "noisytune", "arm": "plain", "seed": 3, "wall_seconds": 25.3, "num_turns": 8, "cost_usd": 0.065441, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 5, "wall_seconds": 34.7, "num_turns": 10, "cost_usd": 0.08397690000000002, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 2, "wall_seconds": 24.3, "num_turns": 8, "cost_usd": 0.0660426, "subtype": "success"}
+{"task": "noisytune", "arm": "plain", "seed": 4, "wall_seconds": 27.5, "num_turns": 8, "cost_usd": 0.0750316, "subtype": "success"}
+{"task": "noisytune", "arm": "plain", "seed": 5, "wall_seconds": 14.0, "num_turns": 6, "cost_usd": 0.04874970000000001, "subtype": "success"}
+{"task": "noisytune", "arm": "plain", "seed": 1, "wall_seconds": 26.4, "num_turns": 10, "cost_usd": 0.07133489999999999, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 6, "wall_seconds": 31.3, "num_turns": 10, "cost_usd": 0.07858910000000001, "subtype": "success"}
+{"task": "noisytune", "arm": "loop", "seed": 1, "wall_seconds": 51.2, "num_turns": 12, "cost_usd": 0.10051219999999998, "subtype": "success"}
+6 runs to do
+{"task": "noisytune", "arm": "hillclimb", "seed": 5, "wall_seconds": 49.9, "num_turns": 16, "cost_usd": 0.1399331, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb", "seed": 3, "wall_seconds": 59.4, "num_turns": 17, "cost_usd": 0.15965039999999997, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb", "seed": 1, "wall_seconds": 40.9, "num_turns": 13, "cost_usd": 0.11351620000000001, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb", "seed": 2, "wall_seconds": 67.4, "num_turns": 16, "cost_usd": 0.14266959999999998, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb", "seed": 6, "wall_seconds": 56.6, "num_turns": 16, "cost_usd": 0.1432185, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb", "seed": 4, "wall_seconds": 51.9, "num_turns": 15, "cost_usd": 0.12153380000000003, "subtype": "success"}
+6 runs to do
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 5, "wall_seconds": 29.1, "num_turns": 13, "cost_usd": 0.10511399999999999, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 3, "wall_seconds": 48.2, "num_turns": 11, "cost_usd": 0.09319, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 2, "wall_seconds": 47.8, "num_turns": 15, "cost_usd": 0.11925760000000002, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 1, "wall_seconds": 29.9, "num_turns": 15, "cost_usd": 0.10208919999999999, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 6, "wall_seconds": 53.4, "num_turns": 14, "cost_usd": 0.11993110000000001, "subtype": "success"}
+{"task": "noisytune", "arm": "hillclimb-v2", "seed": 4, "wall_seconds": 61.5, "num_turns": 22, "cost_usd": 0.15649959999999996, "subtype": "success"}

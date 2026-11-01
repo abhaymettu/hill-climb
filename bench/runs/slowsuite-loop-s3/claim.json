@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.74, "final": 2.9, "summary": "Share the 400k-item catalog across the session (take test restores its mutation) and inject a fake sleep into the retry tests, which now also assert the backoff schedule."}

@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4108, "final": 0.0034, "summary": "Replaced quadratic loops with single-pass dict/set aggregation, cached path normalization and status/latency parsing, and used str.split: 2.41s -> 0.0034s (~700x), same checksum, tests pass."}

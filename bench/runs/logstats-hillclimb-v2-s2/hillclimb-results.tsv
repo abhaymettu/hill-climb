@@ -1,0 +1,3 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:48:00 CST	e539f34	baseline	4.4025	pass	baseline	mad 0.596
+1	2026-11-01 05:48:13 CST	f2064ab	single-pass analyze, sorted p95, cached normalize	0.005	pass	keep	WIN: gain +99.9%, bar 27.1%

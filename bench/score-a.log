@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/abhay/code/hill-climb/bench/score.py", line 272, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/abhay/code/hill-climb/bench/score.py", line 258, in main
+    if not (run / "meta.json").exists() or ((run / "score.json").exists() and not a.rescore):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abhay/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py", line 860, in exists
+    self.stat(follow_symlinks=follow_symlinks)
+  File "/Users/abhay/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py", line 840, in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 63] File name too long: '/Users/abhay/code/hill-climb/bench/runs/slowsuite-hillclimb-v2-s1-opus\nslowsuite-hillclimb-v2-s3-opus\nslowsuite-hillclimb-v3-s1\nslowsuite-hillclimb-v3-s3\nslowsuite-hillclimb-v3-s5\nslowsuite-loop-s1-opus\nslowsuite-loop-s3-opus\nslowsuite-plain-s1-opus\nslowsuite-plain-s3-opus\nslowsuite-plain-s4-opus\nslowsuite-plain-s5/meta.json'
+done

@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 4.4025, "final": 0.005, "summary": "Rewrote analyze() as a single pass with dict/set counters, sorted() percentiles and cached path normalization (removes the O(n^2) loops)."}

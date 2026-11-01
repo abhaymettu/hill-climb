@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Logistic regression on standardized quadratic + abs features of the first 8 columns (noise columns dropped, chosen by train-only CV)"}

@@ -1,0 +1,7 @@
+round	time	commit	change	score	gates	verdict	notes
+b64b	2026-11-01 07:44:28 CST	a8420d6		134.23	pass	keep	{"verdict": "WIN", "best": 148.71, "candidate": 134.23, "gain_rel": 0.0974, "bar_rel": 0.0593, "noise_rel": 0.0593, "min_delta": 0.02, "direction": "min"} 
+w4	2026-11-01 07:44:28 CST	219e5c3		139.08	pass	revert	{"verdict": "NOISE", "best": 134.23, "candidate": 139.08, "gain_rel": -0.0361, "bar_rel": 0.0842, "noise_rel": 0.0842, "min_delta": 0.02, "direction": "min"} 
+c1024re	2026-11-01 07:44:43 CST	0ea662f		136.79	pass	revert	{"verdict": "NOISE", "best": 148.71, "candidate": 136.79, "gain_rel": 0.0802, "bar_rel": 0.104, "noise_rel": 0.104, "min_delta": 0.02, "direction": "min"} 
+x	2026-11-01 07:44:51 CST	9b9030c		184.6	pass	revert	{"verdict": "LOSS", "best": 148.71, "candidate": 184.6, "gain_rel": -0.2413, "bar_rel": 0.1594, "noise_rel": 0.1594, "min_delta": 0.02, "direction": "min"} 
+x	2026-11-01 07:44:51 CST	6ccb1be		190.15	pass	revert	{"verdict": "LOSS", "best": 148.71, "candidate": 190.15, "gain_rel": -0.2787, "bar_rel": 0.1196, "noise_rel": 0.1196, "min_delta": 0.02, "direction": "min"} 
+x	2026-11-01 07:44:52 CST	b486bc0		188.41	pass	revert	{"verdict": "LOSS", "best": 148.71, "candidate": 188.41, "gain_rel": -0.267, "bar_rel": 0.1236, "noise_rel": 0.1236, "min_delta": 0.02, "direction": "min"} 

@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.80, "final": 3.52, "summary": "build the 400k-item catalog once per session (take test restores its edits) and inject a no-op sleep into the retry tests; same 33 tests and assertions"}

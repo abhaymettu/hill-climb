@@ -1,0 +1,54 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..776ccb8
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.9, "summary": "Top-10 selected quadratic+sin/cos(z,2z) features with L2 logistic regression (IRLS); settings picked by CV on train"}
+\ No newline at end of file
+diff --git a/model.py b/model.py
+index 1954905..13feb5c 100644
+--- a/model.py
++++ b/model.py
+@@ -4,16 +4,32 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ """
+ import numpy as np
+ 
++_I, _J = np.triu_indices(16)
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++
++def _feats(X, m, s):
++    Z = (X - m) / s
++    return np.hstack([Z, Z[:, _I] * Z[:, _J], np.sin(Z), np.cos(Z), np.sin(2 * Z), np.cos(2 * Z)])
++
++
++def fit(X, y, k=10, lam=10.0):
++    m, s = X.mean(0), X.std(0)
++    P = _feats(X, m, s)
++    mu, sd = P.mean(0), P.std(0) + 1e-9
++    P = (P - mu) / sd
++    # rank quadratic features with a ridge fit, keep the top k, then fit logistic regression on them
++    w0 = np.linalg.solve(P.T @ P + 10 * np.eye(P.shape[1]), P.T @ (2.0 * y - 1))
++    keep = np.argsort(-np.abs(w0))[:k]
++    Q = np.c_[P[:, keep], np.ones(len(P))]
++    w = np.zeros(Q.shape[1])
++    for _ in range(15):
++        p = 1 / (1 + np.exp(-Q @ w))
++        W = p * (1 - p) + 1e-6
++        w = w + np.linalg.solve((Q * W[:, None]).T @ Q + lam * np.eye(len(w)), Q.T @ (y - p) - lam * w)
++    return m, s, mu, sd, keep, w
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    m, s, mu, sd, keep, w = model
++    Q = ((_feats(X, m, s) - mu) / sd)[:, keep]
++    return (np.c_[Q, np.ones(len(Q))] @ w > 0).astype(np.int64)

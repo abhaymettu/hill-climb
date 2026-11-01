@@ -1,0 +1,74 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..cce8b5b
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.4, "final": 2.7, "summary": "Inject no-op sleep in retry tests and build the 400k-item catalog once per session (take test restores its mutations); no tests or assertions removed."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..0e44336 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,11 +14,17 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
+-def big_catalog():
++@pytest.fixture(scope="session")
++def _big_catalog_shared():
+     return build_big_catalog()
+ 
+ 
++@pytest.fixture
++def big_catalog(_big_catalog_shared):
++    """Shared and read-only by convention: tests that mutate it must restore it."""
++    return _big_catalog_shared
++
++
+ @pytest.fixture
+ def small_catalog():
+     c = Catalog()
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..70fc532 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -54,9 +54,13 @@ def test_big_tagged(big_catalog):
+ 
+ 
+ def test_big_take(big_catalog):
+-    assert big_catalog.take("SKU000012", 12) == 0
+-    with pytest.raises(OutOfStock):
+-        big_catalog.take("SKU000013", 1)
++    before = {s: dict(big_catalog.items[s]) for s in ("SKU000012", "SKU000013")}
++    try:
++        assert big_catalog.take("SKU000012", 12) == 0
++        with pytest.raises(OutOfStock):
++            big_catalog.take("SKU000013", 1)
++    finally:
++        big_catalog.items.update(before)
+ 
+ 
+ def test_big_roundtrip(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..d179a65 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,7 +46,7 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=lambda _: None) == "ok"
+     assert len(calls) == 3
+ 
+ 
+@@ -55,7 +55,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda _: None)
+ 
+ 
+ def test_retry_backoff_schedule():

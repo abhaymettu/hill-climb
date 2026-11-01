@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 193.81, "final": 193.71, "summary": "No improvement found: 7 single-setting changes (workers, cache_mb, prefetch, compression, pool_timeout_ms, batch_size) all fell within noise (MAD ~9ms, bar 13-20%); config.py left at original values."}

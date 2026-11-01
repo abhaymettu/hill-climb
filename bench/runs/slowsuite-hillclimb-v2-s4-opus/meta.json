@@ -1,0 +1,15 @@
+{
+  "task": "slowsuite",
+  "arm": "hillclimb-v2",
+  "seed": 4,
+  "model": "opus",
+  "budget_usd": 4.0,
+  "wall_seconds": 2402.4,
+  "timed_out": true,
+  "exit": -9,
+  "num_turns": null,
+  "cost_usd": null,
+  "subtype": null,
+  "usage": null,
+  "prompt": "Make the test suite in tests/ run faster. Measure it with `python -m pytest -q tests` (its wall time). src/inventory.py is frozen: do not edit anything in src/. The suite must keep passing, keep at least the tests it has now, and must not get any weaker at catching bugs in src/inventory.py.\n\nUse the hill-climb skill for this.\n\nWhen you finish, leave your final version in the working tree and write CLAIM.json in the repo root: {\"metric\": \"suite_seconds\", \"baseline\": <number you measured before changing anything>, \"final\": <number you measured for your final version>, \"summary\": \"<one line>\"}."
+}

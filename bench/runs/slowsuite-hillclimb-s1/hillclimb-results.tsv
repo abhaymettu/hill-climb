@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:27:35 CST	ca3517d	baseline	7.985	pass	baseline	
+1	2026-11-01 05:27:35 CST	ca3517d	no real sleeps in retry tests	5.150	pass	keep	
+2	2026-11-01 05:27:35 CST	ca3517d	shared session big catalog	4.278	pass	keep	

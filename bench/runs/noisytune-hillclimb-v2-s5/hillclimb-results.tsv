@@ -1,0 +1,12 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 07:46:07 CST	5774254	baseline	177.63	pass	baseline	mad 8.26
+1	2026-11-01 07:46:11 CST	92f712f	workers 16	188.33	pass	revert	NOISE: gain -6.0%, bar 14.9%
+2	2026-11-01 07:46:11 CST	a3dbd63	cache 1024	184.85	pass	revert	NOISE: gain -4.1%, bar 15.7%
+3	2026-11-01 07:46:15 CST	481efd0	prefetch 4	177.42	pass	revert	NOISE: gain +0.1%, bar 20.5%
+4	2026-11-01 07:46:15 CST	67d7f6a	compression 1	216.02	pass	revert	NOISE: gain -21.6%, bar 27.3%
+5	2026-11-01 07:46:15 CST	f7e9045	batch 64	212.7	pass	revert	NOISE: gain -19.7%, bar 24.8%
+6	2026-11-01 07:46:16 CST	fbc4961	pool timeout 50	175.77	pass	revert	NOISE: gain +1.1%, bar 15.1%
+7	2026-11-01 07:46:20 CST	b7f5920	compression 9	193.54	pass	revert	NOISE: gain -9.0%, bar 17.6%
+8	2026-11-01 07:46:20 CST	b57e716	batch 4	189.77	pass	revert	NOISE: gain -6.8%, bar 20.7%
+9	2026-11-01 07:46:23 CST	4ad232b	big move: workers32 cache512 prefetch8	187.47	pass	revert	NOISE: gain -5.5%, bar 22.0%
+10	2026-11-01 07:46:24 CST	c8a8055	workers 4 batch 32	233.96	pass	revert	LOSS: gain -31.7%, bar 16.3%

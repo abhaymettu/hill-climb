@@ -1,0 +1,4 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 08:03:41 CST	33b24f9	baseline	2.3296	pass	baseline	mad 0.017, noise bar 1.7%
+1	2026-11-01 08:03:48 CST	0ff98de	linear-time analyze: single pass, dict/set, sorted	0.0132	pass	keep	WIN: gain +99.4%, bar 2.0%
+2	2026-11-01 08:03:53 CST	b810041	str.split and precompiled regexes in parse_line	0.0071	pass	keep	WIN: gain +46.2%, bar 2.5%

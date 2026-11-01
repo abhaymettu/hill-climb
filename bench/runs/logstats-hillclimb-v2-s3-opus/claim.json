@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.9096, "final": 0.0107, "summary": "Replaced quadratic loops (per-user recount, ip list scan, bubble sort, insertion sort, per-path rescans) with dict/set/sorted, memoized normalize_path, and swapped regex parsing for str.split/isdecimal; ~270x faster, tests and checksum unchanged"}

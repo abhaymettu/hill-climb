@@ -1,0 +1,10 @@
+{
+  "runs": true,
+  "visible_ok": true,
+  "hidden_ok": true,
+  "score": 0.8135,
+  "val_acc": 0.825,
+  "train_seconds": 1.49,
+  "tampered": [],
+  "gates_ok": true
+}

@@ -1,0 +1,63 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..1f12d75
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8200, "summary": "Replaced logistic regression with an 8-seed ensemble of weight-decayed tanh MLPs (standardized inputs, Adam); ~6.7s training."}
+diff --git a/model.py b/model.py
+index 1954905..d5eb827 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,42 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _fwd(P, X):
++    mu, sd, W1, b1, W2, b2 = P
++    H = np.tanh(((X - mu) / sd) @ W1 + b1)
++    return H, H @ W2 + b2
++
++
++def _fit1(X, y, hidden=64, epochs=600, lr=0.01, wd=6e-3, seed=0):
++    rng = np.random.default_rng(seed)
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    W1 = rng.normal(0, 1 / np.sqrt(Z.shape[1]), (Z.shape[1], hidden)); b1 = np.zeros(hidden)
++    W2 = rng.normal(0, 1 / np.sqrt(hidden), hidden); b2 = 0.0
++    prm = [W1, b1, W2, b2]
++    m = [np.zeros_like(p) for p in prm]; v = [np.zeros_like(p) for p in prm]
++    n = len(y); bs = 128; t = 0
++    for ep in range(epochs):
++        idx = rng.permutation(n)
++        for s in range(0, n, bs):
++            j = idx[s:s + bs]
++            H = np.tanh(Z[j] @ W1 + b1)
++            p = 1 / (1 + np.exp(-(H @ W2 + b2)))
++            d = (p - y[j]) / len(j)
++            dH = np.outer(d, W2) * (1 - H ** 2)
++            g = [Z[j].T @ dH + wd * W1, dH.sum(0), H.T @ d + wd * W2, d.sum()]
++            t += 1
++            for i in range(4):
++                m[i] = 0.9 * m[i] + 0.1 * g[i]; v[i] = 0.999 * v[i] + 0.001 * g[i] ** 2
++                prm[i] = prm[i] - lr * (m[i] / (1 - 0.9 ** t)) / (np.sqrt(v[i] / (1 - 0.999 ** t)) + 1e-8)
++            W1, b1, W2, b2 = prm
++    return (mu, sd, W1, b1, W2, b2)
++
++
++def fit(X, y, n_models=8):
++    return [_fit1(X, y, seed=s) for s in range(n_models)]
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    z = np.mean([_fwd(m, X)[1] for m in model], axis=0)
++    return (z > 0).astype(np.int64)

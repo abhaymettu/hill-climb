@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Logistic regression on quadratic features of the 6 informative inputs (chosen by train-only CV) instead of linear on all 16"}

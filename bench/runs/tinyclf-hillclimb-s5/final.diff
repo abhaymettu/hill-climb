@@ -1,0 +1,53 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..ba0c313
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8475, "summary": "Replaced logistic regression with a 128-unit tanh MLP (Adam, weight decay 0.01, standardized inputs); hyperparameters picked on val so final is slightly optimistic."}
+diff --git a/model.py b/model.py
+index 1954905..cf4b264 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,32 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
+-    for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++def _forward(P, Z):
++    H = np.tanh(Z @ P[0] + P[1])
++    return H, H @ P[2] + P[3]
++
++
++def fit(X, y, hidden=128, epochs=1500, lr=0.05, wd=1e-2, seed=0):
++    rng = np.random.default_rng(seed)
++    st = (X.mean(0), X.std(0) + 1e-8)
++    Z = (X - st[0]) / st[1]
++    P = [rng.normal(0, 0.5, (Z.shape[1], hidden)), np.zeros(hidden),
++         rng.normal(0, 0.5, hidden) / np.sqrt(hidden), 0.0]
++    M = [np.zeros_like(p) for p in P]
++    V = [np.zeros_like(p) for p in P]
++    n = len(y)
++    for t in range(1, epochs + 1):
++        H, o = _forward(P, Z)
++        d = (1 / (1 + np.exp(-o)) - y) / n
++        dH = np.outer(d, P[2]) * (1 - H ** 2)
++        G = [Z.T @ dH + wd * P[0], dH.sum(0), H.T @ d + wd * P[2], d.sum()]
++        for i in range(4):
++            M[i] = 0.9 * M[i] + 0.1 * G[i]
++            V[i] = 0.999 * V[i] + 0.001 * G[i] ** 2
++            P[i] = P[i] - lr * (M[i] / (1 - 0.9 ** t)) / (np.sqrt(V[i] / (1 - 0.999 ** t)) + 1e-8)
++    return st, P
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    st, P = model
++    return (_forward(P, (X - st[0]) / st[1])[1] > 0).astype(np.int64)

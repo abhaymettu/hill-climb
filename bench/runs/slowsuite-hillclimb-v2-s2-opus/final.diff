@@ -1,0 +1,78 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..670a1bd
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 52.75, "final": 13.88, "summary": "Build the 400k-item big_catalog once per session (restoring mutated quantities after each test) and inject a recording sleep into the retry tests (now also asserting backoff waits and the real-sleep default); medians of hc.py measure on a heavily loaded machine (load avg 70-165), final measured 4.5s in the round-5 run; src/ untouched, 33->34 tests."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..104626c 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,9 +14,23 @@ def build_big_catalog():
+     return c
+ 
+ 
++@pytest.fixture(scope="session")
++def _big_catalog_shared():
++    c = build_big_catalog()
++    return c, {sku: it["qty"] for sku, it in c.items.items()}
++
++
+ @pytest.fixture
+-def big_catalog():
+-    return build_big_catalog()
++def big_catalog(_big_catalog_shared):
++    # Built once per session; quantities (the only state tests mutate) are restored after each test.
++    c, qtys = _big_catalog_shared
++    yield c
++    if c.items.keys() != qtys.keys():
++        for sku in c.items.keys() - qtys.keys():
++            del c.items[sku]
++    for sku, it in c.items.items():
++        if it["qty"] != qtys[sku]:
++            it["qty"] = qtys[sku]
+ 
+ 
+ @pytest.fixture
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..e144ea2 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,16 +46,34 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    waits = []
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=waits.append) == "ok"
+     assert len(calls) == 3
++    assert waits == [0.5, 1.0]
+ 
+ 
+ def test_retry_reraises():
++    calls = []
++    waits = []
++
+     def bad():
++        calls.append(1)
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=waits.append)
++    assert len(calls) == 3
++    assert waits == [0.4, 0.8]
++
++
++def test_retry_defaults_use_real_sleep():
++    import inspect
++    import time
++
++    params = inspect.signature(with_retry).parameters
++    assert params["attempts"].default == 3
++    assert params["delay"].default == 0.5
++    assert params["sleep"].default is time.sleep
+ 
+ 
+ def test_retry_backoff_schedule():

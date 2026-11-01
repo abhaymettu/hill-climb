@@ -1,0 +1,3 @@
+round	time	commit	change	score	gates	verdict	notes
+1	2026-11-01 05:23:24 CST	8cf9694	inject sleep	5.47	pass	keep	
+2	2026-11-01 05:23:46 CST	2d0bc38	share big catalog	3.75	pass	keep	

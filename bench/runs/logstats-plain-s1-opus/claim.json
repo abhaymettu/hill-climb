@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3177, "final": 0.0265, "summary": "Single-pass analyze with dict/set counting, cached path normalization, built-in sort for percentiles and stable top-path ranking; output unchanged (same checksum). Final is median of 7 noisy runs (range 0.0066-0.0769)."}

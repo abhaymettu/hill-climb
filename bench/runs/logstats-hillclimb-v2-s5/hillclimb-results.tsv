@@ -1,0 +1,5 @@
+round	time	commit	change	score	gates	verdict	notes
+0	2026-11-01 05:42:55 CST	9d96719	baseline	2.5935	pass	baseline	mad 0.129
+1	2026-11-01 05:43:03 CST	49e779d	single pass, dict counts, sorted percentile	0.0162	pass	keep	WIN: gain +99.4%, bar 9.9%
+2	2026-11-01 05:43:07 CST	1cd8639	precompiled regexes	0.0136	pass	keep	WIN: gain +16.1%, bar 14.8%
+3	2026-11-01 05:43:10 CST	2fd8724	drop unused parsed fields	0.0121	pass	revert	NOISE: gain +11.0%, bar 23.5%

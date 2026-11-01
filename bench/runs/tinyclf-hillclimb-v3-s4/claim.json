@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8250, "summary": "Standardized features + quadratic and cubic terms in L2-regularized logistic regression (l2/epochs picked by train CV); train time ~0.1s"}

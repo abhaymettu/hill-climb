@@ -1,0 +1,68 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..882634e
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.8925, "summary": "Two-stage sparse logistic model: L1 on quadratic features selects informative inputs (x0-x7), then L1 logistic refit on pairwise products plus hinge bases on features and their squares; val_acc 0.605 -> 0.8925 (5-fold CV on train ~0.875)."}
+diff --git a/model.py b/model.py
+index 1954905..fea44ac 100644
+--- a/model.py
++++ b/model.py
+@@ -4,16 +4,48 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ """
+ import numpy as np
+ 
++KNOTS = (-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5)
++SQ_KNOTS = (0.5, 1.0, 2.0, 3.0)
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++
++def _quad(X):
++    i, j = np.triu_indices(X.shape[1])
++    return np.hstack([X, X[:, i] * X[:, j]])
++
++
++def _hinge(X):
++    # Pairwise products for interactions, plus a per-feature hinge basis for non-monotone main effects.
++    # Hinges on the squares too, for radial effects that flatten or steepen away from zero.
++    return np.hstack([_quad(X)] + [np.maximum(X - k, 0) for k in KNOTS] + [np.maximum(X**2 - k, 0) for k in SQ_KNOTS])
++
++
++def _l1_logreg(F, y, lam, lr=0.5, epochs=3000):
++    mu, sd = F.mean(0), F.std(0) + 1e-9
++    Z = np.hstack([(F - mu) / sd, np.ones((len(F), 1))])
++    w = np.zeros(Z.shape[1])
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        p = 1 / (1 + np.exp(-Z @ w))
++        w -= lr * Z.T @ (p - y) / len(y)
++        # L1 proximal step: most terms are noise, so shrink them to zero (bias unpenalized).
++        w[:-1] = np.sign(w[:-1]) * np.maximum(np.abs(w[:-1]) - lr * lam, 0)
++    return mu, sd, w
++
++
++def fit(X, y, lam_select=2e-2, lam=1e-2, threshold=0.1):
++    # Stage 1: sparse quadratic model to find which raw features carry signal.
++    _, _, w = _l1_logreg(_quad(X), y, lam_select)
++    d = X.shape[1]
++    importance = np.abs(w[:d]).copy()
++    for a, b, c in zip(*np.triu_indices(d), w[d:-1]):
++        importance[a] += abs(c)
++        importance[b] += abs(c)
++    keep = np.where(importance > threshold)[0]
++    # Stage 2: richer basis on the selected features only, with a lighter penalty.
++    return keep, _l1_logreg(_hinge(X[:, keep]), y, lam)
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    keep, (mu, sd, w) = model
++    F = _hinge(X[:, keep])
++    Z = np.hstack([(F - mu) / sd, np.ones((len(F), 1))])
++    return (Z @ w > 0).astype(np.int64)

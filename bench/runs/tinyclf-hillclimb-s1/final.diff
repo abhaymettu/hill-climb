@@ -1,0 +1,55 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..4d3e42b
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.8500, "summary": "Replaced logistic regression with a standardized 32-unit tanh MLP (numpy, Adam, weight decay 1e-2); trains in <1s"}
+diff --git a/model.py b/model.py
+index 1954905..f4ffb48 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,35 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _fwd(P, Z):
++    H = np.tanh(Z @ P["W1"] + P["b1"])
++    return H, H @ P["W2"] + P["b2"]
++
++
++def fit(X, y, hidden=32, epochs=600, lr=0.02, wd=1e-2, seed=0):
++    rng = np.random.RandomState(seed)
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    n, d = Z.shape
++    P = {"W1": rng.randn(d, hidden) / np.sqrt(d), "b1": np.zeros(hidden),
++         "W2": rng.randn(hidden) / np.sqrt(hidden), "b2": 0.0}
++    M = {k: np.zeros_like(v) for k, v in P.items()}
++    V = {k: np.zeros_like(v) for k, v in P.items()}
++    t = 0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        H, o = _fwd(P, Z)
++        g = (1 / (1 + np.exp(-o)) - y) / n
++        dH = np.outer(g, P["W2"]) * (1 - H ** 2)
++        G = {"W2": H.T @ g + wd * P["W2"], "b2": g.sum(),
++             "W1": Z.T @ dH + wd * P["W1"], "b1": dH.sum(0)}
++        t += 1
++        for k in P:
++            M[k] = 0.9 * M[k] + 0.1 * G[k]
++            V[k] = 0.999 * V[k] + 0.001 * G[k] ** 2
++            P[k] = P[k] - lr * (M[k] / (1 - 0.9 ** t)) / (np.sqrt(V[k] / (1 - 0.999 ** t)) + 1e-8)
++    return mu, sd, P
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, P = model
++    return (_fwd(P, (X - mu) / sd)[1] > 0).astype(np.int64)

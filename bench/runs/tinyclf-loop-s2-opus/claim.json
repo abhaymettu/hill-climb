@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.9150, "summary": "Replaced linear logistic regression with ridge-regularised Newton logistic regression on 8 CV-selected nonlinear features (x0*x1, x3^2, x4^2, x5, x7, sin(2*x2), |x6|, x7*x8); columns 9-15 carry no signal and are dropped."}

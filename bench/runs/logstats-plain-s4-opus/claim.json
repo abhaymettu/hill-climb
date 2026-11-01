@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 4.77, "final": 0.0057, "summary": "Rewrote analyze() as a single pass: str.split/isdecimal parsing instead of regex, dict counts for users/paths, a set for IPs, cached path normalization, stable sorted() for top paths, and list.sort() for p95 in place of the quadratic loops"}

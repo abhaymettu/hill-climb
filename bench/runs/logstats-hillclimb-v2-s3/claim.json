@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.5221, "final": 0.005, "summary": "Replaced O(n^2) user/ip/path/percentile loops with dict/set counting, single-pass grouping and sorted(); precompiled regexes; memoized path normalization"}

@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3190, "final": 0.0060, "summary": "Single-pass analyze with dict/set counting, cached path normalization, sorted() instead of quadratic scans; checksum unchanged"}

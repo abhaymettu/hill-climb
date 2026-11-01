@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.605, "final": 0.9, "summary": "Replaced plain logistic regression with Newton-fit L2 logistic regression on standardized, CV-selected features (x0*x1, x3^2, x4^2, sin/cos(2*x2), |x6|, linear x0-5,x7; noise columns 8-15 dropped)."}

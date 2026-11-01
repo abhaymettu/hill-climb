@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8550, "summary": "Replaced plain logistic regression with L1-regularised logistic regression (FISTA) on standardised degree-2 polynomial features; chosen by 5-fold CV on train only."}

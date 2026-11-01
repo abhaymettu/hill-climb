@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.3573, "final": 0.0070, "summary": "Replaced quadratic user/ip/path/percentile loops with single-pass dicts and sorted(); faster parsing, path normalization cached, tuple records"}

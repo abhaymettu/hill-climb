@@ -1,0 +1,19 @@
+18 runs to do
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 4, "wall_seconds": 75.6, "num_turns": 12, "cost_usd": 0.12335800000000001, "subtype": "success"}
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 6, "wall_seconds": 142.7, "num_turns": 20, "cost_usd": 0.20653439999999998, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 1, "wall_seconds": 111.3, "num_turns": 20, "cost_usd": 0.18295709999999998, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 5, "wall_seconds": 142.1, "num_turns": 12, "cost_usd": 0.12674269999999999, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 3, "wall_seconds": 171.6, "num_turns": 22, "cost_usd": 0.19209519999999997, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 4, "wall_seconds": 197.6, "num_turns": 13, "cost_usd": 0.1183765, "subtype": "success"}
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 5, "wall_seconds": 147.8, "num_turns": 22, "cost_usd": 0.2309543, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 4, "wall_seconds": 130.2, "num_turns": 16, "cost_usd": 0.1677412, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 6, "wall_seconds": 113.1, "num_turns": 17, "cost_usd": 0.16182090000000002, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 6, "wall_seconds": 668.0, "num_turns": 21, "cost_usd": 0.1901562, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 3, "wall_seconds": 679.8, "num_turns": 16, "cost_usd": 0.1682123, "subtype": "success"}
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 2, "wall_seconds": 150.7, "num_turns": 18, "cost_usd": 0.19201430000000003, "subtype": "success"}
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 3, "wall_seconds": 26.5, "num_turns": 8, "cost_usd": 0.082279, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 5, "wall_seconds": 98.1, "num_turns": 12, "cost_usd": 0.1284124, "subtype": "success"}
+{"task": "tinyclf", "arm": "hillclimb-v2", "seed": 1, "wall_seconds": 550.1, "num_turns": 32, "cost_usd": 0.3594101, "subtype": "success"}
+{"task": "logstats", "arm": "hillclimb-v2", "seed": 2, "wall_seconds": 298.6, "num_turns": 11, "cost_usd": 0.12448779999999998, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 2, "wall_seconds": 474.7, "num_turns": 19, "cost_usd": 0.19675069999999997, "subtype": "success"}
+{"task": "slowsuite", "arm": "hillclimb-v2", "seed": 1, "wall_seconds": 1150.2, "num_turns": 17, "cost_usd": 0.20865720000000001, "subtype": "success"}

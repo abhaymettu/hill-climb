@@ -1,0 +1,67 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..d2b74b6
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.6050, "final": 0.7925, "summary": "Replaced linear logistic regression with a standardized 5-net ensemble of 64-unit ReLU MLPs trained with Adam"}
+diff --git a/model.py b/model.py
+index 1954905..b3e7ab2 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,47 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    w = np.zeros(Xb.shape[1])
++def _mlp(X, y, h, epochs, lr, wd, seed):
++    rng = np.random.default_rng(seed)
++    n, d = X.shape
++    W1 = rng.normal(0, np.sqrt(2 / d), (d, h)); b1 = np.zeros(h)
++    W2 = rng.normal(0, np.sqrt(2 / h), h); b2 = 0.0
++    params = [W1, b1, W2, np.array(b2)]
++    m = [np.zeros_like(p) for p in params]; v = [np.zeros_like(p) for p in params]
++    t = 0
+     for _ in range(epochs):
+-        p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        idx = rng.permutation(n)
++        for i in range(0, n, 64):
++            b = idx[i:i + 64]
++            xb, yb = X[b], y[b]
++            a = np.maximum(xb @ params[0] + params[1], 0)
++            p = 1 / (1 + np.exp(-(a @ params[2] + params[3])))
++            g = (p - yb) / len(b)
++            gW2 = a.T @ g; gb2 = g.sum()
++            da = np.outer(g, params[2]) * (a > 0)
++            grads = [xb.T @ da + wd * params[0], da.sum(0), gW2 + wd * params[2], np.array(gb2)]
++            t += 1
++            for k in range(4):
++                m[k] = 0.9 * m[k] + 0.1 * grads[k]
++                v[k] = 0.999 * v[k] + 0.001 * grads[k] ** 2
++                params[k] -= lr * (m[k] / (1 - 0.9 ** t)) / (np.sqrt(v[k] / (1 - 0.999 ** t)) + 1e-8)
++    return params
++
++
++def _forward(params, X):
++    a = np.maximum(X @ params[0] + params[1], 0)
++    return a @ params[2] + params[3]
++
++
++def fit(X, y, h=64, epochs=100, lr=3e-3, wd=1e-3, n_models=5):
++    mu, sd = X.mean(0), X.std(0) + 1e-8
++    Z = (X - mu) / sd
++    nets = [_mlp(Z, y.astype(float), h, epochs, lr, wd, s) for s in range(n_models)]
++    return mu, sd, nets
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    mu, sd, nets = model
++    Z = (X - mu) / sd
++    z = np.mean([_forward(p, Z) for p in nets], axis=0)
++    return (z > 0).astype(np.int64)

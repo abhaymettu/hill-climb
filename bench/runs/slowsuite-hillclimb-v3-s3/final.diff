@@ -1,0 +1,62 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..008f7a0
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "suite_seconds", "baseline": 7.13, "final": 2.58, "summary": "Retry tests inject a no-op sleep instead of really sleeping; the 400k-item catalog fixture is built once per session (take test restores its mutation). Same 33 tests, src untouched."}
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c523a38..e5f6811 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -14,7 +14,7 @@ def build_big_catalog():
+     return c
+ 
+ 
+-@pytest.fixture
++@pytest.fixture(scope="session")
+ def big_catalog():
+     return build_big_catalog()
+ 
+diff --git a/tests/test_catalog.py b/tests/test_catalog.py
+index a84e46e..6c4b7e5 100644
+--- a/tests/test_catalog.py
++++ b/tests/test_catalog.py
+@@ -54,9 +54,12 @@ def test_big_tagged(big_catalog):
+ 
+ 
+ def test_big_take(big_catalog):
+-    assert big_catalog.take("SKU000012", 12) == 0
+-    with pytest.raises(OutOfStock):
+-        big_catalog.take("SKU000013", 1)
++    try:
++        assert big_catalog.take("SKU000012", 12) == 0
++        with pytest.raises(OutOfStock):
++            big_catalog.take("SKU000013", 1)
++    finally:
++        big_catalog.items["SKU000012"]["qty"] = 12  # shared fixture: undo
+ 
+ 
+ def test_big_roundtrip(big_catalog):
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 902d1f0..16524f3 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -46,7 +46,7 @@ def test_retry_succeeds_after_failures():
+             raise RuntimeError("boom")
+         return "ok"
+ 
+-    assert with_retry(flaky, attempts=3, delay=0.5) == "ok"
++    assert with_retry(flaky, attempts=3, delay=0.5, sleep=lambda s: None) == "ok"
+     assert len(calls) == 3
+ 
+ 
+@@ -55,7 +55,7 @@ def test_retry_reraises():
+         raise KeyError("x")
+ 
+     with pytest.raises(KeyError):
+-        with_retry(bad, attempts=3, delay=0.4)
++        with_retry(bad, attempts=3, delay=0.4, sleep=lambda s: None)
+ 
+ 
+ def test_retry_backoff_schedule():

@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.9000, "summary": "Replaced plain linear logistic regression with Newton-fit L2 logistic regression on 7 nonlinear features found by spline/residual analysis (x0*x1, sin(1.9*x2), x3^2, x4^2, x5, |x6|, x7); noise features x8-x15 dropped; 5x5-fold CV on train 0.908."}

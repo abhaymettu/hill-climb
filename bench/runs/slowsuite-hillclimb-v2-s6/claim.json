@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 8.29, "final": 2.7, "summary": "retry tests inject a recording fake sleep (asserting the backoff schedule) and the 400k-item catalog is built once per session; same 33 tests, same assertions"}

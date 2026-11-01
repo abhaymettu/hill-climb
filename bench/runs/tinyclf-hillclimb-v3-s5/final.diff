@@ -1,0 +1,46 @@
+diff --git a/CLAIM.json b/CLAIM.json
+new file mode 100644
+index 0000000..6735f02
+--- /dev/null
++++ b/CLAIM.json
+@@ -0,0 +1 @@
++{"metric": "val_acc", "baseline": 0.605, "final": 0.85, "summary": "Logistic regression on standardized quadratic + abs features of the first 8 columns (noise columns dropped, chosen by train-only CV)"}
+diff --git a/model.py b/model.py
+index 1954905..b87ca25 100644
+--- a/model.py
++++ b/model.py
+@@ -5,15 +5,28 @@ X is a float array of shape (n, 16), y is 0/1 of shape (n,). numpy is the only d
+ import numpy as np
+ 
+ 
+-def fit(X, y, lr=0.1, epochs=200):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
++def _feats(X, stats=None):
++    X = X[:, :8]  # columns 8+ were noise in train-only CV
++    iu = np.triu_indices(X.shape[1])
++    Z = np.hstack([X, np.abs(X), X[:, iu[0]] * X[:, iu[1]]])
++    if stats is None:
++        stats = (Z.mean(0), Z.std(0) + 1e-8)
++    Z = (Z - stats[0]) / stats[1]
++    return np.hstack([Z, np.ones((len(Z), 1))]), stats
++
++
++def fit(X, y, lr=0.1, epochs=500, l2=0.01):
++    Xb, stats = _feats(X)
+     w = np.zeros(Xb.shape[1])
+     for _ in range(epochs):
+         p = 1 / (1 + np.exp(-Xb @ w))
+-        w -= lr * Xb.T @ (p - y) / len(y)
+-    return w
++        g = Xb.T @ (p - y) / len(y)
++        g[:-1] += l2 * w[:-1]
++        w -= lr * g
++    return w, stats
+ 
+ 
+ def predict(model, X):
+-    Xb = np.hstack([X, np.ones((len(X), 1))])
+-    return (Xb @ model > 0).astype(np.int64)
++    w, stats = model
++    Xb, _ = _feats(X, stats)
++    return (Xb @ w > 0).astype(np.int64)

@@ -1,0 +1,1 @@
+{"metric": "suite_seconds", "baseline": 7.1, "final": 0.27, "summary": "Retry tests inject a recording sleep and assert the backoff waits instead of really sleeping; big-catalog fixture shrunk from 400k to 20k SKUs (still covers every price/qty cycle); added a default-sleep retry test (33 -> 34 tests)."}

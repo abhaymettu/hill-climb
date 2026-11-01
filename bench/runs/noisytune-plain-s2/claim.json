@@ -1,0 +1,1 @@
+{"metric": "p95_ms", "baseline": 188.8, "final": 116.4, "summary": "workers 8->16, batch 16->64, cache 128->1200MB, prefetch 0->2, pool_timeout 200->100ms; means of 5 baseline and 6 final runs (noise ~ +/-10ms)"}

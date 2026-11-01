@@ -1,0 +1,1 @@
+{"metric": "seconds", "baseline": 2.4159, "final": 0.0053, "summary": "Single-pass aggregation with dict/set counting, sorted() instead of quadratic loops, faster parse_line, memoized path normalization; checksum and tests unchanged."}

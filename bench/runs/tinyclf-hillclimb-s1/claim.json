@@ -1,0 +1,1 @@
+{"metric": "val_acc", "baseline": 0.6050, "final": 0.8500, "summary": "Replaced logistic regression with a standardized 32-unit tanh MLP (numpy, Adam, weight decay 1e-2); trains in <1s"}
