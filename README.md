@@ -2,9 +2,13 @@
 
 **An agent skill for improving code in measured rounds, and a benchmark that tests whether it helps.**
 
-The agent changes one thing, scores it against the current best, keeps it only if it wins, reverts it if not,
-and logs every round. Then we ran it: 156 isolated Claude Code sessions on four optimization tasks, each with a
-hidden check the agent never sees, scored from outside.
+Ask a coding agent to make something faster and it can get there by breaking what it was meant to protect:
+in our runs, agents asked to speed up a test suite shrank its data until it no longer caught a bug, and called it
+the same coverage. hill-climb makes the agent work like a careful engineer instead. It changes one thing, scores it
+against the current best, keeps it only if it wins, reverts it if not, and logs every round.
+
+Then we tested whether that discipline helps, in 156 isolated Claude Code sessions on four optimization tasks, each
+with a hidden check the agent never sees, scored from outside.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/bench-results-opus-dark.png">
