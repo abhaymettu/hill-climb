@@ -31,3 +31,21 @@ Lane: prove hill-climb works (2026-11-01). Newest entries last.
   the real CTR winner only 69% and 66%; a 3-judge majority is no better than a single judge.
 - v2 skill drafted in bench/work/skill-v2 (one-command `hc.py round`, explicit "a big win is not a stop rule",
   eval-set overfitting section). v2 arm running: `batch.py --arms hillclimb-v2 --skill-dir bench/work/skill-v2`.
+
+## 06:00 to 07:50 scoring under load, noisy task, skill v3
+- Machine shared with other lanes (load average up to 115 on 12 cores). Wall-clock medians were useless
+  (baseline samples 3.1 to 21.9 s). Scorer now times each run interleaved with the untouched baseline, uses
+  in-process CPU time for logstats and the minimum paired wall time for slowsuite (sleeps only show in wall).
+- Interim (Sonnet): no arm shipped a broken gate or an unbacked claim on logstats, tinyclf, slowsuite. On those
+  tasks the skill does not beat a plain loop. The skill's core idea (noise discipline) was untested there.
+- Added `noisytune`: tune 6 settings of a black-box simulated service, one bench run has ~8% noise, scored on
+  the true noise-free p95 (baseline 190.8, optimum 103.9). Result: plain 124.8, loop 116.8, skill v1 146.3,
+  skill v2 148.1. The skill did worse; 3 skill runs ended exactly at baseline.
+- Root causes, both in hc.py: (1) stale Python bytecode. Agents chain `round` calls, so a revert and the next
+  edit land in the same second with the same size; pyc is keyed on mtime seconds plus size, so round N measured
+  round N-1's config. (2) The noise band was 2 x (MAD_best + MAD_cand), independent of the number of runs, so
+  more runs could never resolve a gain; at 8% noise the band was 15 to 27%.
+- v3 (tag skill-v3): band = 2 standard errors of the difference of medians (shrinks with sqrt(runs));
+  `baseline` prints the band and a NOISY line with the runs needed; `round` clears untracked __pycache__ and
+  waits out the second after a revert. Verified on a scratch copy: cache 1024 now WIN +27.6%, a 2% real gain
+  reads NOISE at the measured band. v3 arm running on all four tasks.
