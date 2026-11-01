@@ -1,0 +1,6 @@
+{
+  "prompt": "Lower the service's p95 latency by changing the settings in config.py. `python bench.py` runs one load test and prints `p95_ms=`; the result varies from run to run. The service (simsvc) is a black box: do not decompile or inspect it. `python -m pytest -q` must pass. Only edit config.py.",
+  "metric": "p95_ms",
+  "direction": "min",
+  "frozen": ["bench.py", "simsvc.pyc", "test_config.py"]
+}

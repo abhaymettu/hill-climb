@@ -47,5 +47,13 @@
     ],
     "tampered": [],
     "gates_ok": true
+  },
+  "noisytune": {
+    "runs": true,
+    "visible_ok": true,
+    "hidden_ok": true,
+    "score": 190.81749308438745,
+    "tampered": [],
+    "gates_ok": true
   }
 }
