@@ -1,0 +1,52 @@
+\section{What the benchmark changed in the skill}
+\label{sec:fix}
+
+The benchmark was built to grade the skill, and it ended up debugging it twice. Each version below is a git tag
+in the repository, and each was run on the full task set.
+
+\paragraph{v1: the loop stopped after one win.} In the pilot and the first batch, skill v1 agents on
+\texttt{logstats} made one large rewrite (a 400$\times$ speedup is available in a single edit), saw a big gain,
+and stopped. Their own words were close to ``the loop stopped because the gain was large''. The skill's patience
+rule (stop after $k$ rounds without a win) was ignored, and so was its bookkeeping: across the six
+\texttt{logstats} runs the results log held 0 to 2 rounds. The scores were
+fine. The process the skill exists to enforce had not happened.
+
+\paragraph{v2: one command per round, and a big win is not a stop rule.} We moved the bookkeeping out of the
+agent's hands. \texttt{hc.py setup} freezes the score command, regex, direction, gates, frozen paths, budget and
+patience in a config file; \texttt{hc.py baseline} logs round 0; and \texttt{hc.py round "<change>"} does a whole
+round in one call: commit, run gates, measure, compare against the current best, keep or \texttt{git revert},
+append a log row, and print \texttt{NEXT} or \texttt{STOP}. The skill text says outright that a big win is not a
+stop rule and adds a section on overfitting the evaluation set. With v2, Sonnet runs logged a median of 7 rounds
+(2 to 20) and Opus runs 13.5. On the three original tasks, v2's scores stayed level with v1 and the controls
+(Table~\ref{tab:sonnet}). On Opus, v2 was the arm that did not weaken the test suite (Section~\ref{sec:results}).
+
+\paragraph{v3: the noisy task found two bugs in the helper.} v2 did worst of all arms on \texttt{noisytune}
+(1.31$\times$), and two of its six runs ended exactly at the baseline settings. Reading the transcripts and
+replaying rounds on a scratch copy found two causes, both in \texttt{hc.py}, not in the agents.
+
+\begin{enumerate}
+\item \emph{Stale bytecode.} Agents chained \texttt{round} calls quickly. A revert and the next edit to
+  \texttt{config.py} could land in the same second with the same file size. Python's bytecode cache is keyed on
+  the source's modification time in whole seconds and its size, so the next measurement imported the previous
+  round's settings. A real change was scored as the old configuration and read as noise. v3's \texttt{round}
+  deletes untracked \texttt{\_\_pycache\_\_} folders before measuring and waits out the current second after a
+  revert.
+\item \emph{A noise band that ignored the run count.} v2 called a change a win only if its gain cleared
+  $2(\mathrm{MAD}_{\text{best}} + \mathrm{MAD}_{\text{cand}})$ relative to the best. The median absolute deviation
+  does not shrink as runs are added, so no number of runs could resolve a gain smaller than the band. At 8\% noise
+  the band was 15 to 27\%. v3 uses two standard errors of the
+  difference of medians, estimating each median's standard error as $1.2533 \cdot 1.4826\,\mathrm{MAD}/\sqrt{n}$,
+  so the band shrinks with $\sqrt{n}$. \texttt{hc.py baseline} now prints the band at the configured run count
+  and, when it is wider than the minimum gain, a \texttt{NOISY} line with the number of runs that would resolve
+  it.
+\end{enumerate}
+
+On a scratch copy of the task under v3, raising one cache setting read as a 27.6\% win, and a 2\% real gain
+correctly read as noise at the measured band. On the benchmark, v3 lifted \texttt{noisytune} from
+1.31$\times$ to 1.43$\times$ with no run left at baseline, held the other tasks level (395$\times$, $+$22.7
+points, 2.88$\times$), and logged a median of 6 rounds per run. It did not close the gap to the free-form
+\textsf{loop} arm (1.65$\times$), for the reasons in Section~\ref{sec:results}.
+
+Both bugs are the kind a skill author would not find by reading the skill. They surface only when many agents
+use the helper in ways its author did not, on a task where they matter. That is an argument for benchmarking
+process instructions the way we benchmark models.

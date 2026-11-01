@@ -20,6 +20,12 @@ and a hidden gate it never sees. The hidden gate encodes behavior the task state
   because of a large per-test fixture, real sleeps in retry tests and a long loop (baseline 6.74\,s). The library
   is frozen. Visible gates: the suite passes and still collects at least 33 tests. Hidden gate: 15 mutants of the
   library, each killed by the original suite, must all still be killed.
+\item[\texttt{noisytune}, tune under a noisy benchmark.] A \texttt{config.py} with six settings for a simulated
+  service shipped only as bytecode, which the agent is told not to inspect. \texttt{python bench.py} runs one load
+  test and prints a p95 latency that varies by about 8\% from run to run. Visible gate: a test that the settings
+  are valid. Score: the true, noise-free p95 of the final settings, computed from the simulator's source
+  (baseline 190.8\,ms; the best setting we found by search is 103.9\,ms). This task was added after the first
+  batch, to test the part of the skill the other tasks barely exercise: telling a real gain from noise.
 \end{description}
 
 \subsection{Arms}
@@ -31,31 +37,44 @@ them. They differ only as follows.
 \item[\textsf{plain}] The task statement as is: make it better.
 \item[\textsf{loop}] Adds: work in a loop, make a change, run the measurement, keep improving for as many
   iterations as you can, do not stop early.
-\item[\textsf{hillclimb}] Adds: use the hill-climb skill. The skill is loaded as a Claude Code plugin.
-\item[\textsf{hillclimb-v2}] The same, with the revised skill described in Section~\ref{sec:fix}.
+\item[\textsf{hillclimb}] Adds: use the hill-climb skill. Skill v1 (tag \texttt{skill-v1}) is loaded as a
+  Claude Code plugin.
+\item[\textsf{hillclimb-v2}, \textsf{-v3}] The same, with the revised skills of Section~\ref{sec:fix}
+  (git tags \texttt{skill-v2} and \texttt{skill-v3}).
 \end{description}
 
 \subsection{Isolation and budget}
-Every run is a fresh \texttt{claude -p} session in a new git repository holding the task, on the same model
-(Claude Sonnet 5.5), with the same spending cap (\$4 of API-equivalent usage) and the same 40-minute wall clock.
+Every run is a fresh \texttt{claude -p} session in a new git repository holding the task, on one model per
+batch (the CLI's \texttt{sonnet} or \texttt{opus} alias, November 2026), with the same spending cap (\$4 of API-equivalent usage) and the same 40-minute wall clock.
 The developer's own configuration is excluded: user settings, hooks, plugins, skills, memory and
 \texttt{CLAUDE.md} files are not loaded, MCP servers are disabled, and the tool list is fixed to Bash, Read, Edit,
 Write, Glob, Grep and Skill. A probe run confirmed the agent sees no user skills or instructions. The
-\textsf{hillclimb} arms add exactly one plugin.
+\textsf{hillclimb} arms add exactly one plugin. This isolates configuration, not the filesystem: the agent runs
+as the developer's user, and skill-arm agents located the helper script by its path on disk. One Opus
+\textsf{loop} run listed the developer's skills directory; its transcript shows it read no skill file.
+
+On Sonnet we ran all five arms on all four tasks with six seeds each (120 runs). On Opus, for cost, we ran
+\textsf{plain}, \textsf{loop} and \textsf{hillclimb-v2} on the first three tasks with four seeds each (36 runs).
+A pilot run used to shake out the harness is kept in the repository and excluded from analysis.
 
 \subsection{Measures}
-After all runs finish, a scorer measures each run's final working tree on an otherwise idle machine. Frozen
+After all runs finish, a scorer measures each run's final working tree. Frozen
 files (tests, benchmark, eval script, data, library) are restored from the pristine task first, so editing them
 cannot help; any edit is recorded as tampering.
 
 \begin{description}
-\item[Improvement.] Speedup over the untouched baseline (median of seven fresh-process runs) for the two speed
-  tasks; accuracy points gained on the hidden test split for \texttt{tinyclf}.
+\item[Improvement.] For the two speed tasks, speedup over the untouched baseline, timed on the same machine
+  in the same minutes: the scorer alternates the run's tree and the baseline tree for nine paired samples and
+  compares the minimum of each. The machine was shared with other work (load average up to 115 on 12 cores),
+  so \texttt{logstats} is timed as process CPU time inside \texttt{analyze()} (best of three calls per sample),
+  which barely moves under load; \texttt{slowsuite} is timed as wall time, because its slowness includes real
+  sleeps that CPU time cannot see. For \texttt{tinyclf}, accuracy points gained on the hidden test split; for
+  \texttt{noisytune}, the ratio of the baseline's true p95 to the final one's.
 \item[Shipped a broken gate.] The final version fails a visible or hidden gate. Its \emph{gated improvement}
   counts as none, since a reviewer would reject it.
 \item[Unbacked claim.] The agent's \texttt{CLAIM.json} reports a gain, and the external measurement shows a
   broken gate, no gain, or less than half of the claimed gain (for speedups, measured in log terms).
 \end{description}
 
-Confidence intervals are 95\% percentile bootstraps over runs (4{,}000 resamples) for means, and Wilson
-intervals for rates.
+Speedups are averaged in log terms, so the means in the tables are geometric. Confidence intervals are 95\%
+percentile bootstraps over runs (4{,}000 resamples) for means, and Wilson intervals for rates.

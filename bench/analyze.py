@@ -132,13 +132,15 @@ def table(rows, arms):
 
 
 def latex(rows, arms, model):
-    out = [r"\begin{table}[t]\centering\small",
+    out = [r"\begin{table}[t]\centering\small\setlength{\tabcolsep}{3pt}",
            rf"\caption{{Results on Claude {model.capitalize()}. Gated improvement: mean over runs, with a broken gate "
            r"counted as no gain; brackets are 95\% bootstrap intervals. Broken: final version fails a visible or "
            r"hidden gate. Unbacked: claimed gain not borne out by the outside measurement.}",
            rf"\label{{tab:{model}}}", r"\begin{tabular}{llcccc}\toprule",
            r"Task & Arm & Runs & Gated improvement & Broken & Unbacked \\\midrule"]
     for task in TASKS:
+        if not any(r["task"] == task for r in rows):
+            continue
         for arm in arms:
             rs = [r for r in rows if r["task"] == task and r["arm"] == arm]
             if not rs:

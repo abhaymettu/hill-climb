@@ -1,0 +1,17 @@
+\begin{abstract}
+Coding agents are now asked to optimize things over many rounds: make code faster, raise a score, tune a
+config. Recipes for doing this (edit, measure, keep or revert) circulate as prompts and agent skills, but none
+reports a controlled test of whether the recipe helps. We wrote one such skill, hill-climb, and tested it on four
+small optimization tasks with hidden gates that check behavior the agent was told to keep. Every run is an
+isolated \texttt{claude -p} session scored from outside the agent: 120 runs on Claude Sonnet (five arms) and
+36 on Claude Opus (three arms). On Opus, the skill prevented the most costly failure we saw: without it, 5 of 8
+runs on a test-suite speed-up task shipped a suite that no longer caught a hidden bug while claiming it was no
+weaker; with it, 0 of 4 did. It also made agents iterate in logged rounds instead of stopping after one large
+rewrite. On the easier tasks it tied a plain ``keep iterating'' instruction at about twice the cost, and on a
+task with an 8\% noisy benchmark it still trailed a free-form loop. The benchmark found two real bugs in the
+skill's helper (stale bytecode after fast reverts, and a noise band that ignored the number of runs), which we
+fixed and re-tested. Separately, we checked the skill's blind three-judge protocol for taste work against 100
+decisive real headline A/B tests: panels agree with each other (Fleiss $\kappa$ up to 0.83) but pick the real
+winner only 65 to 69\% of the time, and a majority of three is no better than one judge. Code, tasks, all 156
+transcripts and the scorer are public.
+\end{abstract}

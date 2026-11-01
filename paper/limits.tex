@@ -1,0 +1,35 @@
+\section{Limits}
+\label{sec:limits}
+
+\paragraph{Small samples.} Six runs per cell on Sonnet and four on Opus. Most differences between arms on the
+easy tasks sit inside overlapping intervals, and we report them as ties. The Opus result is 5 of 8 against 0 of
+4; a two-sided Fisher exact test on those counts gives $p \approx 0.08$, suggestive, not conclusive.
+
+\paragraph{One mutant drives the main finding.} The weakened suites killed 14 of 15 mutants. Only the mutant
+that truncates large tag lookups separates them from the rest. A gate suite with a different blind spot would
+change the count.
+
+\paragraph{Four small tasks.} Each task is a few hundred lines and solvable in minutes. Real optimization work
+has larger search spaces and slower measurements, where the skill's discipline may matter more or cost more.
+Opus ran only three tasks and three arms.
+
+\paragraph{Shared machine.} The runs and the scoring shared a 12-core machine with other work, at load averages
+up to 115. We therefore time each run's tree against the untouched baseline in alternating pairs, use process
+CPU time for \texttt{logstats} and the minimum paired wall time for \texttt{slowsuite}. Ratios are robust to
+load in this design; absolute seconds are not, and the agents' own in-session timings were taken under the same
+load.
+
+\paragraph{Isolation covers configuration, not the filesystem.} No user settings, skills, hooks, memory or MCP
+servers were loaded, but the agents ran as a normal user on the developer's machine. Skill-arm agents found the
+helper script by its path on disk, and one Opus \textsf{loop} run listed the developer's skills directory without
+reading a skill. A container per run would close this.
+
+\paragraph{One model family, one harness.} Every agent is Claude, run through Claude Code. The skill is plain
+Markdown plus a Python script and should work in other harnesses, but we have not measured that.
+
+\paragraph{The taste test is headlines, not interfaces.} Section~\ref{sec:taste} uses headline click-through as
+the real outcome. Judging page layouts or product copy may behave differently.
+
+\paragraph{The author wrote the skill and the benchmark.} We fixed the tasks, arms and measures before the main
+batch and added \texttt{noisytune} afterwards to probe a specific gap; that task was then run for every arm. All
+transcripts are published so others can check how we scored them.

@@ -1,0 +1,42 @@
+\section{Introduction}
+\label{sec:intro}
+
+A growing share of agent work is optimization: a number that should go down (runtime, latency, loss) or up
+(accuracy, a benchmark score), with tests that must keep passing. Karpathy's \emph{autoresearch}~\cite{autoresearch}
+made a simple loop popular for this: change one thing, run the measurement, keep the change if it wins, discard
+it if not, and log every round. Many variants now ship as prompts or agent skills. They are written as if the
+loop obviously helps. We did not find one that tests that.
+
+The question has a practical edge. An agent told to ``make the suite faster'' can do it by testing less. An agent
+told to ``raise accuracy'' can tune on its validation split until the gain does not survive a held-out set. An
+agent reading a noisy benchmark can mistake noise for progress. A loop recipe claims to guard against all three.
+Whether it does is an empirical question about agents, not about the recipe's wording.
+
+We packaged the loop as an agent skill, \emph{hill-climb}, with a small helper script that freezes the setup,
+runs gates, measures repeatedly, decides keep or revert against a noise band, and logs each round. We then built a
+benchmark to test it (Section~\ref{sec:bench}): four optimization tasks, each with an objective score and a
+hidden gate the agent never sees, run in isolated \texttt{claude -p} sessions and scored from outside. We compare
+the skill against two controls on the same model: the plain task, and the task plus an instruction to keep
+iterating.
+
+Our findings, in order of how much we trust them:
+\begin{enumerate}
+\item \textbf{The skill prevented a weakened test suite on Opus.} Asked to speed up a test suite, 5 of 8 Opus runs
+  without the skill shrank a slow fixture until the suite stopped killing a hidden mutant, and said the suite was no
+  weaker. With the skill, 0 of 4 did (Section~\ref{sec:results}). The effect rests on one mutant and small samples.
+\item \textbf{It changed how agents work, not how far they got on easy tasks.} With the revised skill, Sonnet agents
+  logged a median of 7 measured rounds per run (13.5 on Opus); with the first version, 3, and 7 of 24 runs logged
+  one round or none. On the speed task the first version mostly stopped after one large rewrite. On three
+  of four tasks the final scores tie a plain loop, at roughly twice the cost.
+\item \textbf{On a noisy benchmark it still trails.} On a tuning task with 8\% run-to-run noise, a free-form loop
+  reached a 1.65$\times$ improvement and the best skill version 1.43$\times$.
+\item \textbf{The benchmark debugged the skill.} The noisy task exposed two bugs in the helper, both of which made
+  correct changes look like noise. Fixing them lifted the skill from 1.31$\times$ to 1.43$\times$ there
+  (Section~\ref{sec:fix}).
+\item \textbf{Blind judge panels are consistent, not correct.} On 100 real headline A/B tests, three-judge panels
+  pick the winner 65 to 69\% of the time however much they agree (Section~\ref{sec:taste}).
+\end{enumerate}
+
+No Sonnet run shipped a broken gate, and only one Sonnet run claimed a gain the outside measurement did not
+support. The failure that mattered was quieter: an honest-sounding claim, on Opus, that a cheaper test suite was
+just as good.

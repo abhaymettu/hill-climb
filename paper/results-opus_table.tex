@@ -1,4 +1,4 @@
-\begin{table}[t]\centering\small
+\begin{table}[t]\centering\small\setlength{\tabcolsep}{3pt}
 \caption{Results on Claude Opus. Gated improvement: mean over runs, with a broken gate counted as no gain; brackets are 95\% bootstrap intervals. Broken: final version fails a visible or hidden gate. Unbacked: claimed gain not borne out by the outside measurement.}
 \label{tab:opus}
 \begin{tabular}{llcccc}\toprule
@@ -14,5 +14,4 @@ Raise held-out accuracy & hillclimb-v2 & 4 & $+$25.4 pts [$+$22.9 pts, $+$26.9 p
 Speed up a test suite & plain & 4 & 1.50x [1.00x, 3.35x] & 3/4 & 3/4 \\
 Speed up a test suite & loop & 4 & 2.39x [1.00x, 5.70x] & 2/4 & 2/4 \\
 Speed up a test suite & hillclimb-v2 & 4 & 2.83x [1.49x, 4.86x] & 0/4 & 0/3 \\
-\midrule
 \bottomrule\end{tabular}\end{table}
