@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """hc.py: small, dependency-free helpers for a hill-climb run.
 
+  hc.py setup --cmd CMD --direction min|max [opts]   init, plus the run's frozen config for `round`
+  hc.py baseline                         gates and score on the untouched tree, logged as round 0
+  hc.py round "CHANGE"                   one whole round: commit, gates, score, keep or revert, log, next step
   hc.py init [DIR]                       write HILLCLIMB.md and results.tsv into DIR/.hillclimb
   hc.py measure [opts] -- CMD ...        run CMD N times, print the metric's median and spread as JSON
   hc.py compare BEST.json CAND.json      noise-aware verdict: WIN, LOSS or NOISE
@@ -183,7 +186,8 @@ def cmd_log(a):
         row["round"] = str(len(_read(a.file)))
     with open(a.file, "a") as f:
         f.write("\t".join(row[k] for k in COLUMNS) + "\n")
-    print(json.dumps(row))
+    if not getattr(a, "quiet", False):
+        print(json.dumps(row))
 
 
 def cmd_status(a):
@@ -208,9 +212,195 @@ def cmd_status(a):
                       "stop": stop or None}, indent=1))
 
 
+CONFIG = os.path.join(".hillclimb", "config.json")
+BEST = os.path.join(".hillclimb", "rounds", "best.json")
+LOG = os.path.join(".hillclimb", "results.tsv")
+
+
+def _git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True)
+
+
+def _measure_cfg(cfg, out):
+    ns = argparse.Namespace(cmd=["--", cfg["cmd"]], regex=cfg.get("regex"), runs=cfg["runs"], warmup=cfg["warmup"],
+                            expect=cfg.get("expect", []), expect_line=cfg.get("expect_line", []),
+                            timeout=cfg["timeout"], fail_fast=True, out=out)
+    with open(os.devnull, "w") as devnull:
+        stdout, sys.stdout = sys.stdout, devnull
+        try:
+            cmd_measure(ns)
+        finally:
+            sys.stdout = stdout
+    return json.load(open(out))
+
+
+def _gates(cfg, base_commit):
+    if cfg.get("frozen") and base_commit:
+        changed = _git("diff", "--name-only", base_commit, "HEAD", "--", *cfg["frozen"]).stdout.split()
+        if changed:
+            return f"frozen file changed: {', '.join(changed)}"
+    for g in cfg.get("gates", []):
+        try:
+            r = subprocess.run(g, shell=True, capture_output=True, text=True, timeout=cfg["timeout"])
+        except subprocess.TimeoutExpired:
+            return f"gate timed out: {g}"
+        if r.returncode != 0:
+            return f"gate failed: {g}: {(r.stdout + r.stderr).strip()[-300:]}"
+    return None
+
+
+def cmd_setup(a):
+    cmd_init(argparse.Namespace(dir="."))
+    cfg = {"cmd": a.cmd, "regex": a.regex, "direction": a.direction, "min_delta": a.min_delta, "runs": a.runs,
+           "warmup": a.warmup, "expect": a.expect, "expect_line": a.expect_line, "gates": a.gate,
+           "frozen": a.frozen, "budget": a.budget, "patience": a.patience, "timeout": a.timeout}
+    if os.path.exists(CONFIG) and not a.force:
+        sys.exit("setup: .hillclimb/config.json exists; the score never changes mid-run (use --force to restart "
+                 "the run at a new round 0, and note why under Restarts in HILLCLIMB.md)")
+    with open(CONFIG, "w") as f:
+        json.dump(cfg, f, indent=1)
+    print(json.dumps(cfg, indent=1))
+    print("NEXT: fill in .hillclimb/HILLCLIMB.md, commit any pending work, then run: hc.py baseline")
+
+
+def _next(cfg, rows_since_win, rounds, wins):
+    stop = []
+    if cfg["budget"] and rounds >= cfg["budget"]:
+        stop.append(f"budget of {cfg['budget']} rounds used")
+    if cfg["patience"] and rows_since_win >= cfg["patience"]:
+        stop.append(f"{rows_since_win} rounds in a row without a win (patience {cfg['patience']})")
+    if stop:
+        return "STOP: " + "; ".join(stop) + ". Confirm the best against the baseline, then write the report."
+    msg = (f"NEXT: round {rounds + 1} of {cfg['budget'] or 'unlimited'}. Make ONE change (not to frozen files) "
+           f"and run: hc.py round \"<what you changed>\". The run is not over until this prints STOP; "
+           f"a big win is not a stop rule.")
+    half = math.ceil(cfg["patience"] / 2) if cfg["patience"] and cfg["patience"] > 2 else 0
+    if half and rows_since_win == half:
+        msg += " Big move due: try a different approach altogether, not a tweak (notes=big-move)."
+    return msg
+
+
+def cmd_baseline(a):
+    cfg = json.load(open(CONFIG))
+    if _git("status", "--porcelain", "--untracked-files=no").stdout.strip():
+        sys.exit("baseline: commit or stash tracked changes first")
+    head = _git("rev-parse", "--short", "HEAD").stdout.strip()
+    err = _gates(cfg, None)
+    if err:
+        sys.exit(f"baseline: {err}. The gates must pass on the untouched version; fix the setup, not the gate.")
+    res = _measure_cfg(cfg, os.path.join(".hillclimb", "rounds", "r00.json"))
+    if not res["ok"]:
+        sys.exit(f"baseline: measurement failed: {res['errors'][:1]}")
+    res["commit"], res["base_commit"] = head, head
+    with open(BEST, "w") as f:
+        json.dump(res, f, indent=1)
+    cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=["round=0", "change=baseline", f"score={res['median']:.6g}",
+                                                 "gates=pass", "verdict=baseline", f"notes=mad {res['mad']:.3g}"]))
+    print(_next(cfg, 0, 0, 0))
+
+
+def cmd_round(a):
+    cfg = json.load(open(CONFIG))
+    best = json.load(open(BEST))
+    rows = _read(LOG)
+    n = len(rows)
+    _git("add", "-A")
+    if _git("diff", "--cached", "--quiet").returncode != 0:
+        _git("commit", "-q", "-m", f"r{n:02d}: {a.change}")
+    head = _git("rev-parse", "--short", "HEAD").stdout.strip()
+    if _git("rev-parse", "HEAD").stdout.strip() == _git("rev-parse", best["commit"]).stdout.strip():
+        sys.exit("round: nothing changed since the best; make one change first")
+    verdict, score, notes, gates = None, "", "", "pass"
+    if a.verdict:
+        err = _gates(cfg, best["base_commit"])
+        if err:
+            verdict, gates, notes = "LOSS", "fail", err
+        else:
+            verdict, score, notes = a.verdict.upper(), a.score or "", a.notes or ""
+    else:
+        err = _gates(cfg, best["base_commit"])
+        if err:
+            verdict, gates, notes = "LOSS", "fail", err
+        else:
+            out = os.path.join(".hillclimb", "rounds", f"r{n:02d}.json")
+            cand = _measure_cfg(cfg, out)
+            if not cand["ok"]:
+                verdict, gates, notes = "LOSS", "fail", f"measurement failed: {cand['errors'][:1]}"
+            else:
+                cmp_ns = argparse.Namespace(best=BEST, cand=out, direction=cfg["direction"], min_delta=cfg["min_delta"])
+                buf = __import__("io").StringIO()
+                stdout, sys.stdout = sys.stdout, buf
+                try:
+                    cmd_compare(cmp_ns)
+                finally:
+                    sys.stdout = stdout
+                c = json.loads(buf.getvalue())
+                verdict, score = c["verdict"], f"{cand['median']:.6g}"
+                notes = f"gain {c['gain_rel']:+.1%}, bar {c['bar_rel']:.1%}"
+                if verdict == "NOISE" and a.simpler:
+                    verdict, notes = "KEEP", notes + ", simpler"
+    if a.notes and not a.verdict:
+        notes = f"{notes}, {a.notes}" if notes else a.notes
+    keep = verdict in ("WIN", "KEEP")
+    cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=[f"round={n}", f"commit={head}", f"change={a.change}",
+                                                 f"score={score}", f"gates={gates}",
+                                                 f"verdict={'keep' if keep else 'revert'}",
+                                                 f"notes={verdict}: {notes[:200]}"]))
+    if keep:
+        if not a.verdict:
+            new = json.load(open(os.path.join(".hillclimb", "rounds", f"r{n:02d}.json")))
+            new["commit"], new["base_commit"] = head, best["base_commit"]
+            with open(BEST, "w") as f:
+                json.dump(new, f, indent=1)
+        else:
+            best["commit"] = head
+            with open(BEST, "w") as f:
+                json.dump(best, f, indent=1)
+    else:
+        _git("reset", "-q", "--hard", best["commit"])
+    rows = _read(LOG)
+    since = 0
+    for r in reversed(rows):
+        if r["verdict"].lower() in KEEP_VERDICTS:
+            break
+        since += 1
+    wins = sum(r["verdict"].lower() == "keep" for r in rows)
+    print(f"{verdict}: {notes}" + (" -> kept" if keep else f" -> reverted to {best['commit']}"))
+    print(_next(cfg, since, len(rows) - 1, wins))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="sub", required=True)
+
+    s = sub.add_parser("setup")
+    s.add_argument("--cmd", required=True, help="the scoring command, run from the repo root")
+    s.add_argument("--regex", help="metric = group 1 of the last match; omit to score the command's wall time")
+    s.add_argument("--direction", choices=["min", "max"], required=True)
+    s.add_argument("--min-delta", type=float, default=0.02)
+    s.add_argument("--runs", type=int, default=5)
+    s.add_argument("--warmup", type=int, default=1)
+    s.add_argument("--expect", action="append", default=[], metavar="REGEX")
+    s.add_argument("--expect-line", action="append", default=[], metavar="TEXT")
+    s.add_argument("--gate", action="append", default=[], metavar="CMD", help="must exit 0 (repeatable)")
+    s.add_argument("--frozen", action="append", default=[], metavar="PATH", help="may not change (repeatable)")
+    s.add_argument("--budget", type=int, default=20)
+    s.add_argument("--patience", type=int, default=5)
+    s.add_argument("--timeout", type=float, default=600)
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_setup)
+
+    s = sub.add_parser("baseline")
+    s.set_defaults(fn=cmd_baseline)
+
+    s = sub.add_parser("round")
+    s.add_argument("change", help="the one change this round made, in a few words")
+    s.add_argument("--verdict", choices=["WIN", "LOSS", "NOISE", "win", "loss", "noise"],
+                   help="judge mode: the unblinded panel verdict, decided outside this script")
+    s.add_argument("--score", help="judge mode: the vote, e.g. '3/3 cand'")
+    s.add_argument("--simpler", action="store_true", help="the change deletes more than it adds: keep it at equal score")
+    s.add_argument("--notes")
+    s.set_defaults(fn=cmd_round)
 
     s = sub.add_parser("init")
     s.add_argument("dir", nargs="?", default=".")

@@ -68,6 +68,21 @@ lost, and a pattern there (readability lost three rounds running) tells you what
 - **One reference, or two.** A reference anchors the rubric. Two references keep the climb from cloning
   either one.
 
+## What a panel can and cannot tell you
+
+Tested on 100 real headline A/B tests from the Upworthy Research Archive, each with a decisive click-rate
+winner: three-judge panels agreed with each other far more than with readers. Agreement rose with model size
+(Fleiss kappa 0.45 to 0.83, and two panels of different models gave the same majority on 84% of pairs), but
+every panel picked the real winner only 65 to 69% of the time, and a majority of three was no more accurate
+than one judge, because the judges make the same mistakes. The method and data are in `bench/taste/`.
+
+- A panel gives a steady, unbiased verdict on what a capable reader prefers. That is enough to stop noise
+  and position bias from steering a climb. It is not a measure of an audience.
+- When a real outcome can be measured (clicks, conversions, task success, a user study), climb on it, or
+  keep the panel as a cheap filter per round and confirm the final best against the real outcome.
+- A unanimous panel is a little more reliable than a split one (70 to 74% in the test above).
+- Report panel wins as "the judges preferred", never as "users will prefer".
+
 ## Without subagents
 
 Any fresh model context works as a judge: a headless CLI call with the images attached, or an API call.

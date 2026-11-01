@@ -9,8 +9,11 @@ Make one change, score it against the current best, keep it if it wins, revert i
 The loop is simple. Runs fail in the details: a score that shifts mid-run, a noisy number read as a win,
 a judge who knows which version is new, a run that never stops. This skill is those details.
 
-`scripts/hc.py` (Python 3, standard library) does the mechanical parts: `init`, `measure`, `compare`,
-`flip`, `log`, `status`. Run `python3 <skill-dir>/scripts/hc.py -h`.
+`scripts/hc.py` (Python 3, standard library) does the mechanical parts. For a scalar score, three
+commands run the whole loop: `setup` once, `baseline` once, then `round "<change>"` after every change. Each
+`round` commits, runs the gates, measures, decides, logs, reverts a loser and prints the next step. The
+lower-level `init`, `measure`, `compare`, `flip`, `log` and `status` are there for judge mode and odd cases.
+Run `python3 <skill-dir>/scripts/hc.py -h`.
 
 ## 1. Pick the score mode
 
@@ -48,15 +51,20 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
 1. Work on a new branch, `hill-climb/<tag>` (if the name is taken by an earlier run, add `-2`), with no uncommitted changes to tracked files (untracked build
    output such as `__pycache__/` is fine). If the target is not in git, `git init` it. Uncommitted user work
    must never be at risk from a revert: commit it on its own branch, stash it, or stop and ask.
-2. `hc.py init` creates `.hillclimb/HILLCLIMB.md` (from `references/setup-template.md`), `.hillclimb/results.tsv`
-   and `.hillclimb/rounds/`, and adds `.hillclimb/` to `.git/info/exclude` so the log survives every revert.
+2. Scalar runs: `hc.py setup --cmd '<score command>' --regex '<metric regex>' --direction min|max
+   --min-delta 0.02 --gate '<test command>' --frozen <path> --budget 20 --patience 5` (gates and frozen paths
+   repeat; `--expect-line '<exact line>'` adds an output guard such as a checksum). It writes the frozen config to
+   `.hillclimb/config.json`, creates `.hillclimb/HILLCLIMB.md` (from `references/setup-template.md`),
+   `.hillclimb/results.tsv` and `.hillclimb/rounds/`, and adds `.hillclimb/` to `.git/info/exclude` so the log
+   survives every revert. Judge runs: `hc.py init`, and the same config with the capture as `--cmd` if you
+   want `round` to do the bookkeeping.
 3. Fill in HILLCLIMB.md: the target and its editable surface, what is frozen (tests, eval harness, the
    benchmark itself), the score, the exact gate commands, the budget, the stop rule. For judge mode, also
    write the judge prompt to `.hillclimb/judge-prompt.md`; it is frozen like the rest. Show it to the user if they are
    around; do not wait on them if they are not.
 4. A quick probe before round 0 (one run, to see how long it takes or whether the metric parses) is fine
-   and is not logged. Round 0: measure the untouched baseline exactly as every later round will be measured, and log it with
-   `verdict=baseline`. For judge mode, capture the baseline artifacts.
+   and is not logged. Round 0: `hc.py baseline` checks the gates pass on the untouched version, measures it
+   exactly as every later round will be measured, and logs it. For judge mode, capture the baseline artifacts.
 
 **The score never changes mid-run.** Not the command, the regex, the rubric, the views, the judge count
 or the gates. If it must change, that is a restart: note why under Restarts in HILLCLIMB.md and
@@ -69,29 +77,24 @@ to make a number move is not a win; it is a different run. That is why HILLCLIMB
 
 1. **Pick one idea.** One change per round, so a result can be attributed. Prefer ideas the last loss's
    evidence points to. Deletions that hold the score are wins too: simpler at equal quality is better.
-2. **Make it and commit it**: `git commit -am "r07: <the change>"`.
-3. **Gates.** Run them. Any failure is a loss; skip the score. A trivial slip (a typo, a missing import)
-   gets one fix and re-run; a broken idea gets reverted, not nursed. A guard on the benchmark's own output
-   (a checksum line, a result count) can ride along with the measurement: `measure --expect-line '<exact line>'`
-   (taken literally) or `--expect '<regex>'` fails any run whose output lacks it, and the round's JSON records
-   which guards ran.
-4. **Score.**
-   - scalar: `hc.py measure --runs 5 --regex 'seconds=([0-9.]+)' --out .hillclimb/rounds/r07.json -- <cmd>`,
-     then `hc.py compare .hillclimb/rounds/best.json .hillclimb/rounds/r07.json --direction min --min-delta 0.02`.
-     Without `--regex`, the metric is the command's whole wall time, startup and setup included; use that only
-     when the whole command is what you are speeding up.
-   - judge: capture, then `hc.py flip --judges 3 --best <best dir> --cand <cand dir> --out .hillclimb/rounds/r07/blind`,
-     which records the coin flips and gives each judge copies under neutral names (a path like `r07/` would
-     tell the judge which side is new). Run the judges, unblind, majority. Details in `references/judging.md`.
-5. **Decide.** WIN keeps. LOSS reverts. NOISE reverts too, with one exception: a change that deletes more
-   code than it adds and passes the gates is kept at equal score (`notes=simpler`). Simpler at equal
-   quality is a real gain the metric cannot see.
-6. **Log every round, losses included, before reverting**, so the row records the candidate's commit:
-   `hc.py log .hillclimb/results.tsv round=7 change="memoize parse" score=0.412 gates=pass verdict=keep notes="gain 9%, bar 2%"`.
-   `score` is the median for scalar runs, the vote (`2/3 cand`) for judge runs. Then act: on a keep, the
-   candidate becomes the best (scalar: copy its JSON to `best.json`); on a revert, `git reset --hard HEAD~1`.
-   The log is the run's memory; a silent loop looks the same as a stuck one.
-7. **Check stop**: `hc.py status .hillclimb/results.tsv --patience 5 --budget 20`.
+2. **Make it**, then run **`hc.py round "<the change, in a few words>"`**. It commits the change as `rNN`, fails
+   the round if a frozen path changed or a gate fails, measures it with the frozen settings, compares it with
+   the best (`WIN`, `LOSS` or `NOISE`, see section 4), logs the row, keeps a winner or resets to the best on
+   anything else, and prints `NEXT: ...` or `STOP: ...`. Do what that line says.
+   - A deletion that ties: `hc.py round "<change>" --simpler` keeps it at equal score.
+   - A trivial slip (a typo, a missing import) that fails a gate costs that round; fix it as the next round.
+   - Judge mode: run the panel first (`flip`, judges, unblind, majority, see `references/judging.md`), then
+     `hc.py round "<change>" --verdict WIN|LOSS|NOISE --score "2/3 cand"` for the commit, gates, log and revert.
+3. Without `round` (no config, an unusual score), do the same steps by hand, in this order: commit
+   (`git commit -am "r07: <change>"`); run the gates, any failure is a loss; `hc.py measure --runs 5 --regex
+   '<re>' --out .hillclimb/rounds/r07.json -- <cmd>`; `hc.py compare .hillclimb/rounds/best.json
+   .hillclimb/rounds/r07.json --direction min --min-delta 0.02`; `hc.py log .hillclimb/results.tsv round=7
+   change="..." score=<median> gates=pass verdict=keep|revert notes="..."` before reverting, so the row holds
+   the candidate's commit; on a keep copy the JSON to `best.json`, otherwise `git reset --hard HEAD~1`;
+   `hc.py status .hillclimb/results.tsv --patience 5 --budget 20`.
+
+Every round is logged, losses included. The log is the run's memory; a silent loop looks the same as a
+stuck one.
 
 Redirect long command output to a file and read only the metric and the tail on failure. Each round's
 full output in your context fills it in a dozen rounds.
@@ -113,11 +116,26 @@ A scalar is a sample, not a fact. Treat a single run as a rumor.
   Machines drift (thermals, other jobs, caches) and the best's numbers may be stale.
 - A gain that only appears at `--runs 1` is not a gain.
 
+### Climbing on a fixed eval set
+
+When the score is accuracy on a fixed set (a validation split, a prompt eval, a benchmark suite), every
+kept round fits that set a little. Twenty rounds of small wins on 400 examples can be pure fit.
+
+- Choose settings (hyperparameters, thresholds, prompt wording variants) inside the training data, with
+  cross-validation, and let the eval set only decide the round. Never sweep a setting against the eval set.
+- Prefer larger, principled changes over tuning a number to the third decimal.
+- In the report, call the final number what it is: the score on the set you climbed on, which overstates
+  performance on new data. If a held-out set exists that the run never looked at, report that too.
+
 ## 5. Stop rules
 
 Stop at the first of: the round budget or time budget, `patience` rounds in a row without a win, the
 target value reached, or the user says stop. Without a stop rule, the run spends hours on noise-level
 tweaks once real gains run out.
+
+**Those are the only stop rules.** A large win is not one: a 100x first round usually means the code was
+far from its limit, and the next rounds start from a new, better best. Do not end your turn, write the
+report or ask whether to continue while `hc.py round` still prints `NEXT`.
 
 Defaults if the user named none: 20 rounds, patience 5.
 
@@ -178,4 +196,6 @@ report it, do not hide it.
 - The judge knew which side was new, or the builder judged its own change.
 - Two ideas in one round.
 - A round missing from the log because it lost.
+- The run ended after a big win while rounds and patience were left.
+- A setting swept against the eval set the run is scored on.
 - Background work left running with no NEXT.md.

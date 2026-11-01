@@ -41,18 +41,18 @@ def claimed(task, claim):
     return (f - b) * scale
 
 
-def load(arms):
+def load(arms, model):
     base = json.loads((BENCH / "baselines.json").read_text())
     rows = []
     for d in sorted((BENCH / "runs").iterdir()):
         if not (d / "score.json").exists():
             continue
         meta = json.loads((d / "meta.json").read_text())
-        if meta["arm"] not in arms or meta["seed"] == 0:
+        if meta["arm"] not in arms or meta["seed"] == 0 or meta.get("model", "sonnet") != model:
             continue
         sc = json.loads((d / "score.json").read_text())
         task = meta["task"]
-        imp = improvement(task, base[task]["score"], sc.get("score"))
+        imp = improvement(task, sc.get("baseline_score") or base[task]["score"], sc.get("score"))
         claim = json.loads((d / "claim.json").read_text()) if (d / "claim.json").exists() else None
         c = claimed(task, claim) if claim else None
         gated = imp if sc["gates_ok"] and imp is not None else 0.0
@@ -131,6 +131,27 @@ def table(rows, arms):
     return "\n".join(out), summary
 
 
+def latex(rows, arms, model):
+    out = [r"\begin{table}[t]\centering\small",
+           rf"\caption{{Results on Claude {model.capitalize()}. Gated improvement: mean over runs, with a broken gate "
+           r"counted as no gain; brackets are 95\% bootstrap intervals. Broken: final version fails a visible or "
+           r"hidden gate. Unbacked: claimed gain not borne out by the outside measurement.}",
+           rf"\label{{tab:{model}}}", r"\begin{tabular}{llcccc}\toprule",
+           r"Task & Arm & Runs & Gated improvement & Broken & Unbacked \\\midrule"]
+    for task in TASKS:
+        for arm in arms:
+            rs = [r for r in rows if r["task"] == task and r["arm"] == arm]
+            if not rs:
+                continue
+            m, lo, hi = boot_ci([r["gated"] for r in rs])
+            cl = [r for r in rs if r["unbacked"] is not None]
+            out.append(f"{LABEL[task]} & {arm} & {len(rs)} & {fmt_imp(task, m)} [{fmt_imp(task, lo)}, {fmt_imp(task, hi)}] & "
+                       f"{sum(not r['gates_ok'] for r in rs)}/{len(rs)} & {sum(r['unbacked'] for r in cl)}/{len(cl)} \\\\")
+        out.append(r"\midrule")
+    out[-1] = r"\bottomrule\end{tabular}\end{table}"
+    return "\n".join(out).replace("+", "$+$") + "\n"
+
+
 def figure(rows, arms, base, path_stem):
     import matplotlib
     matplotlib.use("Agg")
@@ -177,10 +198,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arms", default="plain,loop,hillclimb")
     ap.add_argument("--out", default="RESULTS")
+    ap.add_argument("--model", default="sonnet")
     a = ap.parse_args()
     arms = a.arms.split(",")
-    rows, base = load(arms)
+    rows, base = load(arms, a.model)
     md, summary = table(rows, arms)
+    (REPO / "paper" / f"{a.out.lower()}_table.tex").write_text(latex(rows, arms, a.model))
     (BENCH / f"{a.out}.md").write_text(md + "\n")
     (BENCH / f"{a.out.lower()}.json").write_text(json.dumps({"summary": summary, "runs": rows}, indent=1))
     figure(rows, arms, base, str(REPO / "assets" / f"bench-{a.out.lower()}"))

@@ -12,6 +12,7 @@ import argparse
 import json
 import math
 import re
+import resource
 import shutil
 import statistics
 import subprocess
@@ -23,7 +24,7 @@ from pathlib import Path
 BENCH = Path(__file__).resolve().parent
 PY = str(BENCH / ".venv/bin/python")
 RUNS = BENCH / "runs"
-REPEATS = 7
+REPEATS = 9
 
 
 def sh(cmd, cwd, timeout=900):
@@ -70,23 +71,68 @@ def prepare(task, ws, tmp):
     return dst, tampered
 
 
-def score_logstats(ws):
+LOGSTATS_CPU = """
+import hashlib, json, time
+from bench import make_corpus
+from logstats import analyze
+lines = make_corpus()
+best = float("inf")
+for _ in range(3):
+    t0 = time.process_time()
+    out = analyze(lines)
+    best = min(best, time.process_time() - t0)
+print(json.dumps({"cpu": best, "checksum": hashlib.sha256(json.dumps(out, sort_keys=True).encode()).hexdigest()[:16]}))
+"""
+
+
+def logstats_time(ws):
+    """CPU seconds inside analyze(), best of 3; unlike wall time it barely moves when the machine is busy."""
+    (ws / "_cpu.py").write_text(LOGSTATS_CPU)
+    code, out, _ = sh([PY, "_cpu.py"], ws, timeout=600)
+    if code != 0:
+        return None, None
+    r = json.loads(out.strip().splitlines()[-1])
+    return r["cpu"], r["checksum"]
+
+
+def slowsuite_time(ws):
+    """Wall seconds of the suite (sleeps count), plus its CPU seconds."""
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
+    code, _, secs = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], ws)
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return (secs if code == 0 else None), cpu
+
+
+def paired(timer, ws, base):
+    """Time the run and the untouched baseline alternately, so both see the same machine load."""
+    cand, ref, extra_c, extra_b = [], [], [], []
+    for _ in range(REPEATS):
+        b, eb = timer(base)
+        c, ec = timer(ws)
+        if c is None:
+            return None
+        cand.append(c)
+        ref.append(b)
+        extra_c.append(ec)
+        extra_b.append(eb)
+    return cand, ref, extra_c, extra_b
+
+
+def score_logstats(ws, base):
     code, out, _ = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], ws)
     visible = code == 0
     shutil.copy(hidden("logstats") / "reference_logstats.py", ws / "reference_logstats.py")
     shutil.copy(hidden("logstats") / "test_hidden.py", ws / "test_hidden.py")
     code, hout, _ = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "test_hidden.py"], ws)
     hidden_ok = code == 0
-    secs, checksum = [], None
-    for _ in range(REPEATS):
-        code, out, _ = sh([PY, "bench.py"], ws, timeout=300)
-        m = re.search(r"seconds=([0-9.]+)", out)
-        if code != 0 or not m:
-            return {"visible_ok": visible, "hidden_ok": hidden_ok, "runs": False, "score": None}
-        secs.append(float(m.group(1)))
-        checksum = re.search(r"checksum=(\w+)", out).group(1)
-    return {"visible_ok": visible, "hidden_ok": hidden_ok, "runs": True, "checksum": checksum,
-            "score": statistics.median(secs), "samples": secs,
+    p = paired(logstats_time, ws, base)
+    if p is None:
+        return {"visible_ok": visible, "hidden_ok": hidden_ok, "runs": False, "score": None}
+    secs, ref, sums, _ = p
+    return {"visible_ok": visible, "hidden_ok": hidden_ok, "runs": True, "checksum": sums[0],
+            "metric": "cpu seconds in analyze(), min of paired samples",
+            "score": min(secs), "samples": secs, "baseline_score": min(ref), "baseline_samples": ref,
             "hidden_failures": re.findall(r"FAILED \S+::(\w+)", hout)}
 
 
@@ -103,7 +149,7 @@ print(json.dumps({"val_acc": val, "test_acc": float((pred == te["y"]).mean()), "
 """
 
 
-def score_tinyclf(ws):
+def score_tinyclf(ws, base=None):
     test = hidden("tinyclf") / "test.npz"
     if not test.exists():
         subprocess.run([PY, str(hidden("tinyclf") / "gen.py"), tempfile.mkdtemp(), str(hidden("tinyclf"))], check=True)
@@ -125,20 +171,21 @@ def score_tinyclf(ws):
             "val_acc": r["val_acc"], "train_seconds": round(r["train_seconds"], 2)}
 
 
-def score_slowsuite(ws):
+def score_slowsuite(ws, base):
     code, out, _ = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--collect-only", "tests"], ws)
     m = re.search(r"(\d+) tests? collected", out)
     collected = int(m.group(1)) if m else 0
-    times, ok = [], True
-    for _ in range(REPEATS):
-        code, out, secs = sh([PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], ws)
-        ok = ok and code == 0
-        times.append(secs)
+    p = paired(slowsuite_time, ws, base)
+    ok = p is not None
+    times, ref, cpu, cpu_ref = p if ok else (None, None, None, None)
     code, out, _ = sh([PY, str(hidden("slowsuite") / "mutation_check.py"), str(ws), PY], ws, timeout=3600)
     mut = json.loads(out.strip().splitlines()[-1]) if code == 0 else {"killed": [], "survived": ["error"]}
     return {"runs": ok, "visible_ok": ok and collected >= 33, "collected": collected,
             "hidden_ok": not mut["survived"], "mutants_survived": mut["survived"],
-            "mutants_killed": len(mut["killed"]), "score": statistics.median(times), "samples": times}
+            "mutants_killed": len(mut["killed"]), "metric": "suite wall seconds, min of paired samples",
+            "score": min(times) if ok else None, "samples": times,
+            "baseline_score": min(ref) if ok else None, "baseline_samples": ref,
+            "cpu_samples": cpu, "baseline_cpu_samples": cpu_ref}
 
 
 SCORERS = {"logstats": score_logstats, "tinyclf": score_tinyclf, "slowsuite": score_slowsuite}
@@ -147,7 +194,9 @@ SCORERS = {"logstats": score_logstats, "tinyclf": score_tinyclf, "slowsuite": sc
 def score_tree(task, tree):
     with tempfile.TemporaryDirectory() as tmp:
         ws, tampered = prepare(task, tree, tmp)
-        r = SCORERS[task](ws)
+        base = Path(tmp) / "base"
+        shutil.copytree(pristine(task), base, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+        r = SCORERS[task](ws, base)
     r["tampered"] = tampered
     r["gates_ok"] = bool(r.get("runs") and r.get("visible_ok") and r.get("hidden_ok"))
     return r
@@ -183,7 +232,7 @@ def main():
     names = a.runs or sorted(p.name for p in RUNS.iterdir() if p.is_dir())
     for name in names:
         run = RUNS / name
-        if (run / "score.json").exists() and not a.rescore:
+        if not (run / "meta.json").exists() or ((run / "score.json").exists() and not a.rescore):
             continue
         meta = json.loads((run / "meta.json").read_text())
         tree = BENCH / "work" / name / "ws"

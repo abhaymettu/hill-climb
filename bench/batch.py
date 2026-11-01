@@ -27,7 +27,7 @@ def main():
     ap.add_argument("--skill-dir", default=None)
     a = ap.parse_args()
     cells = [(t, arm, s) for t in a.tasks.split(",") for arm in a.arms.split(",") for s in seeds(a.seeds)
-             if not (BENCH / "runs" / f"{t}-{arm}-s{s}" / "meta.json").exists()]
+             if not (BENCH / "runs" / (f"{t}-{arm}-s{s}" + ("" if a.model == "sonnet" else f"-{a.model}")) / "meta.json").exists()]
     random.Random(0).shuffle(cells)
     print(f"{len(cells)} runs to do", flush=True)
 

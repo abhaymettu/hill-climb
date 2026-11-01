@@ -74,7 +74,7 @@ def main():
     ap.add_argument("--skill-dir", default=str(REPO))
     a = ap.parse_args()
 
-    run_id = f"{a.task}-{a.arm}-s{a.seed}"
+    run_id = f"{a.task}-{a.arm}-s{a.seed}" + ("" if a.model == "sonnet" else f"-{a.model}")
     out = BENCH / "runs" / run_id
     ws = BENCH / "work" / run_id / "ws"
     out.mkdir(parents=True, exist_ok=True)
