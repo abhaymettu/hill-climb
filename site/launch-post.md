@@ -1,7 +1,8 @@
 # Launch post draft (for Abhay to send himself)
 
-I built a hill-climbing skill for coding agents (change one thing, measure, keep or revert, log), then
-benchmarked it: 156 isolated Claude Code runs on four tasks, each with a hidden check the agent never sees.
+Ask a coding agent to make your tests faster and it can get there by testing less. I built a skill that
+makes it work in careful rounds instead (change one thing, measure, keep or revert, log), then built a benchmark to
+see whether that helps: four tasks, each with a hidden check the agent never sees, 156 isolated Claude Code runs.
 
 On Opus, 5 of 8 runs without the skill sped up a test suite by shrinking its fixture until it missed
 a hidden bug, and said the suite covered the same behavior. With the skill, 0 of 4.
