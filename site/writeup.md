@@ -71,7 +71,7 @@ tuned one knob per round. That gap is the next thing to fix.
 
 An earlier round of the benchmark had already changed the skill once. Version 1 agents stopped after one big win
 and skipped the bookkeeping. Version 2 made each round a single command and says outright that a big win is not a
-stop rule. Logged rounds went from a median of 3 to 7.
+stop rule. Logged rounds went from a median of 3 to 7, and the current version 3 logs 6.
 
 ## Do blind judges know good copy?
 

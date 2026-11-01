@@ -16,8 +16,8 @@ hidden check the agent never sees, scored from outside.
 - **It stopped a quiet failure.** Asked to speed up a test suite, 5 of 8 Opus runs without the skill shrank a
   400,000-item fixture to 2,000 to 20,000 items and described the suite as covering the same behavior. It no
   longer caught a hidden bug. With the skill, 0 of 4 did, and those runs had the best gated speedup (2.83x).
-- **It makes agents iterate.** With the current skill, Sonnet runs logged a median of 7 gated, measured rounds
-  (Opus 13.5). The first version logged a median of 3, and on the function task it stopped after one big rewrite.
+- **It makes agents iterate.** With the current skill (v3), Sonnet runs logged a median of 6 gated, measured
+  rounds (v2: 7, and 13.5 on Opus). The first version logged a median of 3, and on the function task it stopped after one big rewrite.
 - **The benchmark fixed the skill.** A task with an 8% noisy benchmark exposed two bugs in the helper: stale
   Python bytecode after fast reverts, and a noise band that more runs could never shrink. v3 fixes both and
   went from 1.31x to 1.43x on that task.
@@ -100,9 +100,9 @@ runs are in [`examples/`](examples).
 
 ```sh
 uv venv bench/.venv --python 3.12 && uv pip install --python bench/.venv/bin/python numpy pytest matplotlib
-python bench/score.py --rescore tinyclf-plain-s1      # re-score one committed run from its final.diff
-python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS
-python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS
+bench/.venv/bin/python bench/score.py --rescore tinyclf-plain-s1      # re-score one committed run from its final.diff
+bench/.venv/bin/python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS
+bench/.venv/bin/python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS
 ```
 
 Rerunning the agents themselves needs the Claude Code CLI and is spelled out in

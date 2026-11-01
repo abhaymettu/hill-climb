@@ -15,8 +15,8 @@
       "command": "bench/.venv/bin/python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS"
     },
     {
-      "value": "7 vs 3",
-      "label": "median gated rounds logged per Sonnet run, skill v2 vs v1",
+      "value": "6 vs 3",
+      "label": "median gated rounds logged per Sonnet run, current skill (v3) vs v1 (v2 logged 7)",
       "command": "python3 -c \"import json,statistics as s; R=json.load(open('bench/results.json'))['runs']; print({a: s.median([r['hc_rounds'] for r in R if r['arm']==a and r['hc_rounds'] is not None]) for a in ['hillclimb','hillclimb-v2','hillclimb-v3']})\""
     },
     {

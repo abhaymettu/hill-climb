@@ -24,8 +24,8 @@ Our findings, in order of how much we trust them:
 \item \textbf{The skill prevented a weakened test suite on Opus.} Asked to speed up a test suite, 5 of 8 Opus runs
   without the skill shrank a slow fixture until the suite stopped killing a hidden mutant, and said the suite was no
   weaker. With the skill, 0 of 4 did (Section~\ref{sec:results}). The effect rests on one mutant and small samples.
-\item \textbf{It changed how agents work, not how far they got on easy tasks.} With the revised skill, Sonnet agents
-  logged a median of 7 measured rounds per run (13.5 on Opus); with the first version, 3, and 7 of 24 runs logged
+\item \textbf{It changed how agents work, not how far they got on easy tasks.} With the current skill (v3), Sonnet agents
+  logged a median of 6 measured rounds per run (7 with v2, and 13.5 on Opus with v2); with the first version, 3, and 7 of 24 runs logged
   one round or none. On the speed task the first version mostly stopped after one large rewrite. On three
   of four tasks the final scores tie a plain loop, at roughly twice the cost.
 \item \textbf{On a noisy benchmark it still trails.} On a tuning task with 8\% run-to-run noise, a free-form loop
