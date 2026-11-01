@@ -1,0 +1,6 @@
+{
+  "prompt": "Make `analyze()` in logstats.py faster. The benchmark is `python bench.py`, which prints `seconds=` and `checksum=`. The tests are `python -m pytest -q tests` and must pass. The behavior documented in the module docstring must not change. Do not edit bench.py or anything in tests/.",
+  "metric": "seconds",
+  "direction": "min",
+  "frozen": ["bench.py", "tests"]
+}

@@ -1,0 +1,51 @@
+{
+  "logstats": {
+    "visible_ok": true,
+    "hidden_ok": true,
+    "runs": true,
+    "checksum": "901ab7534b36f69d",
+    "score": 2.2791,
+    "samples": [
+      2.2845,
+      2.4011,
+      2.2811,
+      2.2791,
+      2.2453,
+      2.2621,
+      2.2547
+    ],
+    "hidden_failures": [],
+    "tampered": [],
+    "gates_ok": true
+  },
+  "tinyclf": {
+    "runs": true,
+    "visible_ok": true,
+    "hidden_ok": true,
+    "score": 0.6251,
+    "val_acc": 0.605,
+    "train_seconds": 0.0,
+    "tampered": [],
+    "gates_ok": true
+  },
+  "slowsuite": {
+    "runs": true,
+    "visible_ok": true,
+    "collected": 33,
+    "hidden_ok": true,
+    "mutants_survived": [],
+    "mutants_killed": 15,
+    "score": 6.737473832909018,
+    "samples": [
+      6.84239733312279,
+      6.9080322498921305,
+      6.763987957965583,
+      6.737473832909018,
+      6.6776377079077065,
+      6.715267040999606,
+      6.712087332969531
+    ],
+    "tampered": [],
+    "gates_ok": true
+  }
+}

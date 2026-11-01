@@ -1,2 +1,7 @@
 __pycache__/
 .DS_Store
+bench/.venv/
+bench/work/
+bench/tasks/tinyclf/hidden/test.npz
+bench/tasks/tinyclf/workspace/data/
+bench/runs/*/transcript.jsonl

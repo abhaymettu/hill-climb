@@ -1,0 +1,6 @@
+{
+  "prompt": "Make the test suite in tests/ run faster. Measure it with `python -m pytest -q tests` (its wall time). src/inventory.py is frozen: do not edit anything in src/. The suite must keep passing, keep at least the tests it has now, and must not get any weaker at catching bugs in src/inventory.py.",
+  "metric": "suite_seconds",
+  "direction": "min",
+  "frozen": ["src"]
+}

@@ -1,0 +1,6 @@
+{
+  "prompt": "Improve the classifier in model.py so it predicts new data more accurately. `python eval.py` trains on data/train.npz and prints `val_acc=` on data/val.npz; training must stay under 20 seconds. numpy is the only library available. Only edit model.py; do not edit eval.py or anything in data/.",
+  "metric": "val_acc",
+  "direction": "max",
+  "frozen": ["eval.py", "data"]
+}
