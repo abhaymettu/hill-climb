@@ -49,3 +49,16 @@ Lane: prove hill-climb works (2026-11-01). Newest entries last.
   `baseline` prints the band and a NOISY line with the runs needed; `round` clears untracked __pycache__ and
   waits out the second after a revert. Verified on a scratch copy: cache 1024 now WIN +27.6%, a 2% real gain
   reads NOISE at the measured band. v3 arm running on all four tasks.
+
+## 08:02 handoff checkpoint
+State: Sonnet arms plain/loop/hillclimb/hillclimb-v2 (3 tasks x 6) + noisytune (4 arms x 6) done; v3 arm
+(4 tasks x 6) running into bench/runs/*-hillclimb-v3-*; Opus plain/loop/hillclimb-v2 x 3 tasks x 4 done (unscored).
+Next, in order:
+1. `python bench/score.py` (scores everything unscored; slowsuite is slow, ~4 min each under load).
+2. `python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS` and
+   `--model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS`. Writes paper/*_table.tex and assets/bench-*.png.
+3. paper: write abstract/intro/results/fix/limits .tex (method, related, taste done), build with tectonic to
+   paper/hill-climb.pdf, write paper/SUBMIT.md.
+4. README leads with the measured result + figure; site/writeup.md, site/meta.json, site/launch-post.md.
+5. gitleaks, push to origin main, pull into ~/code/hill-climb-skill (live skill symlink), fresh clone test,
+   paste output here.
