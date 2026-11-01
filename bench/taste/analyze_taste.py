@@ -104,6 +104,16 @@ def main():
                 common = [p for p in a if p in b]
                 same = sum(a[p] == b[p] for p in common)
                 lines.append(f"| {ms[i]} vs {ms[j]} | {pct(wilson(same, len(common)))} |")
+    tex = [r"\begin{table}[t]\centering\small", r"\caption{Three-judge panels on 100 decisive Upworthy headline tests. "
+           r"Brackets: 95\% Wilson intervals (bootstrap for $\kappa$). Chance is 50\%.}\label{tab:taste}",
+           r"\begin{tabular}{lcccc}\toprule",
+           r"Panel & One judge right & Majority right & Right when unanimous & Fleiss $\kappa$ \\\midrule"]
+    for m, r in res.items():
+        f = lambda t: f"{t[0]*100:.0f}\\% [{t[1]*100:.0f}, {t[2]*100:.0f}]"
+        tex.append(f"{m.capitalize()} & {f(r['single_acc'])} & {f(r['majority_acc'])} & "
+                   f"{f(r['unanimous_acc'])} ({r['unanimous']}) & {r['fleiss_kappa']:.2f} [{r['fleiss_ci'][0]:.2f}, {r['fleiss_ci'][1]:.2f}] \\\\")
+    tex += [r"\bottomrule\end{tabular}\end{table}"]
+    (HERE.parent.parent / "paper" / "taste_table.tex").write_text("\n".join(tex) + "\n")
     md = "\n".join(lines)
     (HERE / "TASTE.md").write_text(md + "\n")
     for r in res.values():

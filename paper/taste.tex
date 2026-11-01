@@ -1,0 +1,34 @@
+\section{Do blind judges know good copy?}
+\label{sec:taste}
+
+hill-climb decides taste rounds with a panel of three fresh-context judges who see the two versions under
+neutral labels, each with its own coin flip for which side is new, and keeps a change only on a strict
+majority. The panel guards against position bias and a single judge's whims. Whether it tracks what an audience
+actually prefers is a separate question, and the one that matters.
+
+\paragraph{Data.} The Upworthy Research Archive~\cite{upworthy} holds thousands of real headline A/B tests with
+impressions and clicks. From the exploratory release we took every test with two headlines that ran with the
+same image, excerpt and lede, kept the pair with the largest click-rate gap in each test when that gap had a
+two-proportion $z \ge 3$ and each arm had at least 1{,}000 impressions, and sampled 100 such pairs with a fixed
+seed. These are decisive tests: the median winner drew 177\% more clicks than the loser.
+
+\paragraph{Protocol.} Each pair went to three independent judges per panel, using the skill's judge prompt
+template filled for headlines (three axes, then a verdict of A, B or TIE), with sides assigned by a recorded
+coin flip per judge. We ran three panels, one per model size (Claude Haiku, Sonnet and Opus), 900 calls in all.
+No call failed to parse.
+
+\input{taste_table}
+
+\paragraph{Findings.} Judges agree with each other far more than with readers. Agreement rises with model size,
+from a Fleiss $\kappa$ of 0.45 for Haiku to 0.83 for Opus, and the Sonnet and Opus panels return the same majority
+verdict on 84\% of pairs. Accuracy against the real winner does not follow: every panel lands between 65\% and
+69\%, close to the 65\% ceiling that LOLA~\cite{lola} reported for prompted models on the same archive. A majority of
+three is no more accurate than a single judge, because the three judges make the same mistakes. Unanimous
+panels are slightly more accurate (70 to 74\%), so unanimity carries a little signal. Position bias is
+modest and cancelled by the per-judge flips (Haiku picks slot A 36\% of the time, Opus 52\%).
+
+\paragraph{What this means for the skill.} The panel does its narrow job: it gives a stable, unbiased verdict
+on what a capable reader would prefer. It does not measure an audience. A climb that a panel scores can drift
+toward what models like. We added this result to the skill's judging guide: treat a panel win as ``judges
+preferred'', not ``users will prefer'', use a real outcome measure as the score when one exists, and confirm the
+final best against it when it is costly to measure every round.

@@ -1,0 +1,20 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Agent improvement loops.} Karpathy's \emph{autoresearch}~\cite{autoresearch} popularized giving a
+coding agent a fixed training script, a metric and a loop of edit, run, keep or discard. Community forks extend
+it to other targets~\cite{uditgoenka,tbelbek}. These are recipes; none reports a controlled comparison against an
+agent without the loop, or measures what the loop ships beyond its own metric. hill-climb is one such recipe,
+packaged as an agent skill, and this report is that comparison.
+
+\paragraph{Optimization benchmarks for agents.} GSO~\cite{gso} and PerfAgent~\cite{perfagent} score repository-level
+performance patches against hidden correctness tests and human speedups, and report reward hacking such as caching
+inside timing loops. They rank models. We hold the model fixed and vary only the process instructions, and we add
+two measures they do not report: whether the agent's own claim matches an outside measurement, and whether the
+final version keeps behavior that only a hidden gate checks.
+
+\paragraph{LLM judges.} Pairwise LLM judging is known to carry position and self-preference biases~\cite{mtbench}.
+For copy, LOLA~\cite{lola} found that prompt-based LLMs pick the better of two Upworthy headlines no more than
+65\% of the time. We test the specific protocol hill-climb uses for taste work (blind, per-judge coin flips,
+three fresh judges, strict majority) on the same archive~\cite{upworthy}, and ask a question those studies do not:
+does a panel's agreement tell you it is right?
