@@ -115,6 +115,18 @@ def cmd_measure(a):
     print(text)
 
 
+def _se(m):
+    """Standard error of a median from its MAD: 1.4826 * MAD estimates sigma, 1.2533 * sigma / sqrt(n) the SE."""
+    n = len(m.get("samples", [])) or 1
+    return 1.858 * m.get("mad", 0) / math.sqrt(n)
+
+
+def runs_for_bar(m, bar):
+    """Runs per measurement that bring the noise band down to `bar` (relative), given this spread."""
+    rel = 1.858 * m.get("mad", 0) / abs(m["median"]) if m.get("median") else 0
+    return max(3, math.ceil((2 * math.sqrt(2) * rel / bar) ** 2)) if bar > 0 else None
+
+
 def cmd_compare(a):
     best, cand = (json.load(open(p)) for p in (a.best, a.cand))
     if not cand.get("ok"):
@@ -123,8 +135,9 @@ def cmd_compare(a):
     b, c = best["median"], cand["median"]
     gain = (b - c) if a.direction == "min" else (c - b)
     rel = gain / abs(b) if b else math.copysign(math.inf, gain) if gain else 0.0
-    # Noise band: twice the pooled MAD, relative to the incumbent.
-    noise = 2 * (best.get("mad", 0) + cand.get("mad", 0)) / abs(b) if b else 0.0
+    # Noise band: two standard errors of the difference of medians, relative to the incumbent. More runs
+    # shrink it, so a small real gain can always be resolved by measuring more.
+    noise = 2 * math.hypot(_se(best), _se(cand)) / abs(b) if b else 0.0
     bar = max(a.min_delta, noise)
     # A tie is never a win, even with --min-delta 0 on a deterministic count.
     if rel > 0 and rel >= bar:
@@ -234,6 +247,23 @@ def _measure_cfg(cfg, out):
     return json.load(open(out))
 
 
+def _fresh_tree():
+    """Drop Python bytecode caches. They are keyed on source mtime in whole seconds and on size, so a revert and
+    the next edit landing in the same second can run the previous round's code."""
+    for root, dirs, _ in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in (".git", ".hillclimb", "node_modules")]
+        for d in list(dirs):
+            path = os.path.join(root, d)
+            if d == "__pycache__" and not _git("ls-files", "--", path).stdout.strip():
+                shutil.rmtree(path, ignore_errors=True)
+                dirs.remove(d)
+
+
+def _settle_mtime():
+    """Wait for the next whole second, so edits after a revert get a newer mtime than anything built before it."""
+    time.sleep(1.02 - time.time() % 1.0)
+
+
 def _gates(cfg, base_commit):
     if cfg.get("frozen") and base_commit:
         changed = _git("diff", "--name-only", base_commit, "HEAD", "--", *cfg["frozen"]).stdout.split()
@@ -285,6 +315,7 @@ def cmd_baseline(a):
     if _git("status", "--porcelain", "--untracked-files=no").stdout.strip():
         sys.exit("baseline: commit or stash tracked changes first")
     head = _git("rev-parse", "--short", "HEAD").stdout.strip()
+    _fresh_tree()
     err = _gates(cfg, None)
     if err:
         sys.exit(f"baseline: {err}. The gates must pass on the untouched version; fix the setup, not the gate.")
@@ -294,8 +325,18 @@ def cmd_baseline(a):
     res["commit"], res["base_commit"] = head, head
     with open(BEST, "w") as f:
         json.dump(res, f, indent=1)
+    bar = 2 * math.sqrt(2) * _se(res) / abs(res["median"]) if res["median"] else 0.0
     cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=["round=0", "change=baseline", f"score={res['median']:.6g}",
-                                                 "gates=pass", "verdict=baseline", f"notes=mad {res['mad']:.3g}"]))
+                                                 "gates=pass", "verdict=baseline",
+                                                 f"notes=mad {res['mad']:.3g}, noise bar {bar:.1%}"]))
+    print(f"baseline {res['median']:.6g}, spread (MAD) {res['mad']:.3g}: at {cfg['runs']} runs a round needs a gain "
+          f"of about {max(bar, cfg['min_delta']):.1%} to count as a WIN.")
+    want = max(cfg["min_delta"], 0.02)
+    if bar > 1.5 * want:
+        need = runs_for_bar(res, want)
+        print(f"NOISY: that bar hides gains smaller than {bar:.0%}. To resolve {want:.0%} gains, restart setup with "
+              f"--runs {need} (hc.py setup ... --force, then hc.py baseline) before round 1.")
+        return
     print(_next(cfg, 0, 0, 0))
 
 
@@ -304,6 +345,7 @@ def cmd_round(a):
     best = json.load(open(BEST))
     rows = _read(LOG)
     n = len(rows)
+    _fresh_tree()
     _git("add", "-A")
     if _git("diff", "--cached", "--quiet").returncode != 0:
         _git("commit", "-q", "-m", f"r{n:02d}: {a.change}")
@@ -358,6 +400,8 @@ def cmd_round(a):
                 json.dump(best, f, indent=1)
     else:
         _git("reset", "-q", "--hard", best["commit"])
+        _fresh_tree()
+        _settle_mtime()
     rows = _read(LOG)
     since = 0
     for r in reversed(rows):

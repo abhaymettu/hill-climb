@@ -1,6 +1,6 @@
 {
   "name": "hill-climb",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Improve anything in measured, reversible rounds: one change, score it against the best, keep or revert, log it. Scalar metrics, blind pairwise judges for taste work, and hard gates.",
   "author": { "name": "Abhay Mettu", "url": "https://github.com/abhaymettu" },
   "license": "MIT",

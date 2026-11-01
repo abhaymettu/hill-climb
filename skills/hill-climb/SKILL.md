@@ -104,8 +104,13 @@ full output in your context fills it in a dozen rounds.
 A scalar is a sample, not a fact. Treat a single run as a rumor.
 
 - `measure` takes 5 runs after 1 warmup by default and reports the median and MAD (median absolute
-  deviation). `compare` needs the gain to clear the larger of `--min-delta` and twice the pooled noise.
-  Anything inside the band is NOISE and reverts.
+  deviation). `compare` needs the gain to clear the larger of `--min-delta` and two standard errors of the
+  difference of medians. Anything inside the band is NOISE and reverts.
+- **Size the runs to the gains you are hunting.** The band shrinks with the square root of the runs.
+  `hc.py baseline` prints the band at the configured runs and, when it is wider than the gains you care
+  about, prints `NOISY` with the runs that would resolve them. Act on it before round 1 (`setup --force
+  --runs N`, then `baseline` again): with an 8% run-to-run spread, 5 runs hide every gain under about 14%,
+  so a careful climb rejects every real small improvement and ends where it started.
 - Pick `--min-delta` for what matters to the user, not what the instrument can see: 2% for timings, 0 for
   deterministic counts like bytes or test failures.
 - Mind the instrument's resolution. A metric printed to 4 decimals that reaches 0.007 moves in steps of
@@ -115,6 +120,9 @@ A scalar is a sample, not a fact. Treat a single run as a rumor.
 - On a WIN that is close to the bar, re-measure the best and the candidate back to back and compare again.
   Machines drift (thermals, other jobs, caches) and the best's numbers may be stale.
 - A gain that only appears at `--runs 1` is not a gain.
+- Build caches keyed on file times (Python bytecode, make) can serve the previous round's code when a revert
+  and the next edit land in the same second. `round` clears untracked `__pycache__` folders and waits out the
+  second after a revert; by hand, do the same, or clear the cache in the score command.
 
 ### Climbing on a fixed eval set
 

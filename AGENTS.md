@@ -30,7 +30,7 @@ Pick the line that matches your harness, run it, then verify.
 Verify:
 
 ```sh
-python3 ~/.claude/skills/hill-climb/scripts/hc.py -h     # prints the six subcommands
+python3 ~/.claude/skills/hill-climb/scripts/hc.py -h     # prints the nine subcommands
 ```
 
 Requirements: `git` and Python 3.8 or newer. The helper uses the standard library only. Judge mode also needs
@@ -43,12 +43,20 @@ When the user asks to hill-climb, optimize over rounds, or "keep improving X unt
 `skills/hill-climb/SKILL.md` in full and follow it. In short:
 
 1. Agree the score with the user in one sentence if they did not give one.
-2. `python3 <skill>/scripts/hc.py init` in the target repo, fill in `.hillclimb/HILLCLIMB.md`, measure round 0.
-3. Run rounds: one change, gates, score, log, keep or `git reset --hard HEAD~1`.
-4. Stop on the budget or the patience rule and report best vs baseline.
+2. In the target repo: `hc.py setup --cmd '<score command>' --regex '<metric regex>' --direction min|max
+   --gate '<test command>' --frozen <path>`, fill in `.hillclimb/HILLCLIMB.md`, then `hc.py baseline`.
+3. Each round: make one change, then `hc.py round "<the change>"`. It commits, gates, measures, keeps or
+   reverts, logs, and prints `NEXT` or `STOP`.
+4. Keep going until it prints `STOP`. A big win is not a stop rule. Then report best vs baseline.
 
 `examples/` holds two complete runs (a 370x speed-up scored by a benchmark, and a page polished by blind
 judges) with their setup files and logs. Read one if you want to see what a finished run looks like.
+
+## The benchmark
+
+`bench/` measures whether the skill helps: four optimization tasks with hidden gates, agents run in isolated
+`claude -p` sessions, scored from outside. Read `bench/README.md` before changing anything there. Raw runs in
+`bench/runs/` are data; never edit them.
 
 ## Do not
 
