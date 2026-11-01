@@ -17,26 +17,39 @@ Each task folder holds `workspace/` (what the agent gets), `hidden/` (what it ne
 
 ## Arms
 
-`plain` (the task), `loop` (the task plus "iterate, do not stop early"), `hillclimb` (the task plus "use the
-hill-climb skill", skill v1 loaded as a plugin, tag `skill-v1`), `hillclimb-v2` (the same with the current skill).
-Every run is a fresh, isolated `claude -p` session: no user settings, hooks, plugins, skills, memory, CLAUDE.md or
-MCP servers; tools fixed to Bash, Read, Edit, Write, Glob, Grep, Skill; $4 and 40-minute caps.
+`plain` (the task), `loop` (the task plus "iterate, do not stop early"), and the skill arms: the task plus "use
+the hill-climb skill", with one version of the skill loaded as a plugin. `hillclimb` is skill v1 (tag `skill-v1`),
+`hillclimb-v2` is tag `skill-v2` (the arm ran it without the judge-panel notes in `references/judging.md`, which
+scalar tasks never read), `hillclimb-v3` is tag `skill-v3`. Every run is a fresh, isolated `claude -p` session: no
+user settings, hooks, plugins, skills, memory, CLAUDE.md or MCP servers; tools fixed to Bash, Read, Edit, Write,
+Glob, Grep, Skill; $4 and 40-minute caps. Isolation covers configuration, not the filesystem.
+
+Committed runs: 120 on Sonnet (5 arms x 4 tasks x 6 seeds) and 36 on Opus (`plain`, `loop`, `hillclimb-v2` x the
+first three tasks x 4 seeds). `logstats-hillclimb-s0` is the harness pilot and is left out of every table.
 
 ## Reproduce
 
 ```sh
 uv venv bench/.venv --python 3.12 && uv pip install --python bench/.venv/bin/python numpy pytest matplotlib
-git worktree add bench/work/skill-v1 skill-v1                   # skill v1, for the hillclimb arm
-python bench/batch.py --arms plain,loop --seeds 1-6              # 1 run = 1 isolated claude -p session
-python bench/batch.py --arms hillclimb --seeds 1-6 --skill-dir bench/work/skill-v1
-python bench/batch.py --arms hillclimb-v2 --seeds 1-6 --skill-dir .
-python bench/score.py                                            # scores every run from outside
-python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2 # RESULTS.md, results.json, figures
-python bench/taste/pairs.py && python bench/taste/judge.py --model sonnet && python bench/taste/analyze_taste.py
+for v in 1 2 3; do git worktree add bench/work/skill-v$v skill-v$v; done
+T=logstats,tinyclf,slowsuite,noisytune
+python bench/batch.py --tasks $T --arms plain,loop --seeds 1-6          # 1 run = 1 isolated claude -p session
+python bench/batch.py --tasks $T --arms hillclimb --seeds 1-6 --skill-dir bench/work/skill-v1
+python bench/batch.py --tasks $T --arms hillclimb-v2 --seeds 1-6 --skill-dir bench/work/skill-v2
+python bench/batch.py --tasks $T --arms hillclimb-v3 --seeds 1-6 --skill-dir bench/work/skill-v3
+python bench/batch.py --model opus --arms plain,loop --seeds 1-4
+python bench/batch.py --model opus --arms hillclimb-v2 --seeds 1-4 --skill-dir bench/work/skill-v2
+python bench/score.py                                                   # scores every unscored run from outside
+python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS
+python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS
+python bench/taste/pairs.py
+for m in haiku sonnet opus; do python bench/taste/judge.py --model $m; done
+python bench/taste/analyze_taste.py
 ```
 
 Agent runs are not deterministic, so a rerun gives new samples, not the same numbers. To re-score the committed
-runs exactly, `python bench/score.py --rescore` rebuilds each run's final tree from `runs/<run>/final.diff`.
+runs, `python bench/score.py --rescore [run ...]` rebuilds each run's final tree from `runs/<run>/final.diff`
+(speed scores are timings, so they move a little from machine to machine; gate results should not).
 
 ## Raw data
 
