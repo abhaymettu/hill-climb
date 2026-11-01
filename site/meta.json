@@ -1,0 +1,39 @@
+{
+  "title": "hill-climb",
+  "summary": "An agent skill for improving code in measured rounds, and a 156-run benchmark that tests whether it helps.",
+  "repo": "https://github.com/abhaymettu/hill-climb",
+  "paper_pdf": "paper/hill-climb.pdf",
+  "hero_image": {
+    "light": "assets/bench-results-opus-light.png",
+    "dark": "assets/bench-results-opus-dark.png",
+    "alt": "Claude Opus, four runs per arm. On the test-suite task, 5 of 8 runs without the skill shipped a suite that lost a hidden mutant; all 4 skill runs kept it."
+  },
+  "headline_numbers": [
+    {
+      "value": "5 of 8 vs 0 of 4",
+      "label": "Opus runs that shipped a weakened test suite, without the skill vs with it",
+      "command": "bench/.venv/bin/python bench/analyze.py --model opus --arms plain,loop,hillclimb-v2 --out RESULTS-OPUS"
+    },
+    {
+      "value": "7 vs 3",
+      "label": "median gated rounds logged per Sonnet run, skill v2 vs v1",
+      "command": "python3 -c \"import json,statistics as s; R=json.load(open('bench/results.json'))['runs']; print({a: s.median([r['hc_rounds'] for r in R if r['arm']==a and r['hc_rounds'] is not None]) for a in ['hillclimb','hillclimb-v2','hillclimb-v3']})\""
+    },
+    {
+      "value": "1.31x to 1.43x",
+      "label": "noisy tuning task, skill v2 to v3 after the benchmark found two helper bugs (plain loop: 1.65x)",
+      "command": "bench/.venv/bin/python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS"
+    },
+    {
+      "value": "65 to 69%",
+      "label": "how often a blind three-judge panel picks the real winner of a decisive Upworthy headline A/B test",
+      "command": "python3 bench/taste/analyze_taste.py"
+    },
+    {
+      "value": "0 of 120",
+      "label": "Sonnet runs in any arm that shipped a broken gate",
+      "command": "bench/.venv/bin/python bench/analyze.py --arms plain,loop,hillclimb,hillclimb-v2,hillclimb-v3 --out RESULTS"
+    }
+  ],
+  "tags": ["coding agents", "benchmark", "agent skills", "LLM judges", "Claude Code"]
+}
