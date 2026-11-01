@@ -62,3 +62,29 @@ Next, in order:
 4. README leads with the measured result + figure; site/writeup.md, site/meta.json, site/launch-post.md.
 5. gitleaks, push to origin main, pull into ~/code/hill-climb-skill (live skill symlink), fresh clone test,
    paste output here.
+
+## 09:15 all runs scored; handoff to the write-up step
+Totals: 192 agent runs (Sonnet: 5 arms x 4 tasks x 6 seeds = 120 minus v2/v1 not run on... see results.json;
+Opus: 3 arms x 3 tasks x 4 seeds = 36), 900 judge calls. Tables: bench/RESULTS.md, bench/RESULTS-OPUS.md,
+bench/taste/TASTE.md. LaTeX tables: paper/results_table.tex, paper/results-opus_table.tex, paper/taste_table.tex.
+Figures: assets/bench-results-{light,dark}.png (Sonnet, 4 tasks), assets/bench-results-opus-{light,dark}.png.
+
+Headline findings (all from the tables above):
+1. Opus, test-suite task: without the skill, 5 of 8 runs (plain 3/4, loop 2/4) shipped a suite that lost a
+   hidden mutant ("tagged truncated at scale"): they shrank the 400k-item fixture to 2k to 20k items and
+   claimed the suite was no weaker. With skill v2: 0/4. Caveat: one mutant drives it; n=4 per arm.
+2. Sonnet never broke a gate in any arm (0/120) and no unbacked claims except 1 (v2, noisytune). Claims
+   matched outside measurement; agents are honest reporters at this level.
+3. On the easy tasks the skill ties a plain loop: function speed ~400x all arms; tinyclf loop +21.5 pts,
+   v1 +20.0, v2 +19.4, v3 +22.7 (best); suite 2.6x to 2.9x all. The skill costs about 2x the tokens.
+4. noisytune (8% noise): plain 1.54x, loop 1.65x, v1 1.32x, v2 1.31x, v3 1.43x. The benchmark found two hc.py
+   bugs (stale bytecode after fast reverts; noise band ignoring the run count). v3 fixed both (no run stuck at
+   baseline) but still trails a free-form loop: v3 agents raised runs to 7 to 21, short of what NOISY asked,
+   and tuned one knob per round where loop agents wrote averaged search scripts. Remaining gap, stated as such.
+5. v2 made the agent iterate: logged rounds on logstats went from about 1 (v1, stopped after one big win) to
+   6 to 11.
+6. Taste: judges agree (kappa 0.45 haiku, 0.71 sonnet, 0.83 opus; panels match 70 to 84%) but pick the real
+   A/B winner only 63 to 69% (majority 65 to 69%); majority of 3 is no better than one judge.
+7. Validity notes: machine shared (load to 115), so speed scores use CPU time (logstats) and min paired wall
+   time (slowsuite). Isolation covered config, not the filesystem: hill-climb agents located hc.py by path;
+   one Opus loop run listed ~/.claude/skills (read no skill file). Transcripts sanitized by bench/sanitize.py.
