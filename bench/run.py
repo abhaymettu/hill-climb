@@ -66,7 +66,7 @@ def setup_workspace(task, ws):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
-    ap.add_argument("--arm", required=True, choices=sorted(ARMS) + ["hillclimb-v2"])
+    ap.add_argument("--arm", required=True, choices=sorted(ARMS) + ["hillclimb-v2", "hillclimb-v3"])
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--budget-usd", type=float, default=4.0)
