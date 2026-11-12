@@ -2,8 +2,12 @@
 """hc.py: small, dependency-free helpers for a hill-climb run.
 
   hc.py setup --cmd CMD --direction min|max [opts]   init, plus the run's frozen config for `round`
-  hc.py baseline                         gates and score on the untouched tree, logged as round 0
-  hc.py round "CHANGE"                   one whole round: commit, gates, score, keep or revert, log, next step
+  hc.py setup --judges N [--cmd CAPTURE] [opts]       the same for a judge run (blind pairwise panel)
+  hc.py baseline                         gates and score on the untouched tree, content locks, logged as round 0
+  hc.py preflight broken|cheat|skip      prove the measure sees a broken version and catches a cheat, before round 1
+  hc.py round "CHANGE" [--panel PATH]    one whole round: commit, locks, gates, score, keep or revert, log, next step
+  hc.py tally DIR                        read the judges' saved replies in a blind folder, unblind, write panel.json
+  hc.py holdout [--panel PATH]           score the best on the held-out set now, or record a judged holdout check
   hc.py init [DIR]                       write HILLCLIMB.md and results.tsv into DIR/.hillclimb
   hc.py measure [opts] -- CMD ...        run CMD N times, print the metric's median and spread as JSON
   hc.py compare BEST.json CAND.json      noise-aware verdict: WIN, LOSS or NOISE
@@ -11,14 +15,19 @@
   hc.py log FILE key=value ...           append one row to results.tsv
   hc.py status FILE [--patience N] [--budget N]   rounds, best vs baseline, whether a stop rule fired
 
+Exit codes: 0 ok; 2 refused before anything was committed; 3 round refused after committing (a `refused` row is
+logged and the tree is back at the best).
+
 Standard library only. Python 3.8+.
 """
 import argparse
+import hashlib
 import json
 import math
 import os
 import re
 import secrets
+import shlex
 import shutil
 import statistics
 import subprocess
@@ -29,6 +38,79 @@ from datetime import datetime
 COLUMNS = ["round", "time", "commit", "change", "score", "gates", "verdict", "notes"]
 KEEP_VERDICTS = {"baseline", "keep", "win"}
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+HC = ".hillclimb"
+ROUNDS = os.path.join(HC, "rounds")
+CONFIG = os.path.join(HC, "config.json")
+PROMPT = os.path.join(HC, "judge-prompt.md")
+LOCKS = os.path.join(HC, "locks.json")
+PREFLIGHT = os.path.join(HC, "preflight.json")
+HOLDOUT = os.path.join(HC, "holdout.json")
+BEST = os.path.join(ROUNDS, "best.json")
+R00 = os.path.join(ROUNDS, "r00.json")
+LOG = os.path.join(HC, "results.tsv")
+HOLDOUT_DIR = os.path.join(ROUNDS, "holdout")
+
+FORMAT_VERSION = 2
+ALWAYS_LOCKED = (CONFIG, PROMPT)
+SKIP_IN_LOCKS = {".git", "__pycache__", ".pytest_cache"}
+FLIP_EXT = ".png,.jpg,.jpeg,.webp,.txt,.md,.html,.svg"
+VERDICT_LINE = re.compile(r"^\s*\**\s*VERDICT\s*\**\s*:\s*\**\s*(A|B|TIE)\s*\**\s*$", re.IGNORECASE)
+
+LEGACY_WARNING = ("hc.py: legacy run (set up before content locks and the holdout); using the old checks. "
+                  "Restart with setup --force to get them.")
+VERDICT_REFUSAL = ("round: --verdict is not accepted; save each judge's reply as rounds/rNN/blind/judge-J.txt, "
+                   "run hc.py tally, then round --panel")
+PREFLIGHT_REFUSAL = ("round: pre-flight not done; run hc.py preflight broken and hc.py preflight cheat "
+                     "(see SKILL.md section 2) or hc.py preflight skip --why \"...\"")
+BROKEN_FAIL = ("FAIL: the measure cannot tell a broken version from the baseline; fix the capture, the views or "
+               "the prompt before round 1.")
+
+
+class PanelError(Exception):
+    pass
+
+
+class Refused(Exception):
+    """A round that was committed but must not be judged: logged as `refused`, tree reset, exit 3."""
+
+
+def _refuse(code, msg):
+    print(msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def _load(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def _save(path, obj):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=1)
+        f.write("\n")
+
+
+def _rel(path):
+    return os.path.normpath(os.path.relpath(os.path.abspath(path)))
+
+
+def _pct(x):
+    return "n/a" if x is None else f"{x:+.1%}"
+
+
+class Run:
+    """The run's config and the format it was set up with. A legacy run predates content locks, the panel tally,
+    the pre-flight and the holdout, and keeps the old checks so a run started before them is never refused."""
+
+    def __init__(self):
+        self.cfg = _load(CONFIG)
+        self.v2 = "version" in self.cfg
+        self.judge = bool(self.cfg.get("judges"))
+        self.holdout = self.cfg.get("holdout_cmd") if self.v2 else None
+        if not self.v2:
+            print(LEGACY_WARNING, file=sys.stderr)
 
 
 def cmd_init(a):
@@ -127,18 +209,16 @@ def runs_for_bar(m, bar):
     return max(3, math.ceil((2 * math.sqrt(2) * rel / bar) ** 2)) if bar > 0 else None
 
 
-def cmd_compare(a):
-    best, cand = (json.load(open(p)) for p in (a.best, a.cand))
+def _compare(best, cand, direction, min_delta):
     if not cand.get("ok"):
-        print(json.dumps({"verdict": "LOSS", "reason": "candidate run failed", "errors": cand.get("errors")}))
-        return
+        return {"verdict": "LOSS", "reason": "candidate run failed", "errors": cand.get("errors")}
     b, c = best["median"], cand["median"]
-    gain = (b - c) if a.direction == "min" else (c - b)
+    gain = (b - c) if direction == "min" else (c - b)
     rel = gain / abs(b) if b else math.copysign(math.inf, gain) if gain else 0.0
     # Noise band: two standard errors of the difference of medians, relative to the incumbent. More runs
     # shrink it, so a small real gain can always be resolved by measuring more.
     noise = 2 * math.hypot(_se(best), _se(cand)) / abs(b) if b else 0.0
-    bar = max(a.min_delta, noise)
+    bar = max(min_delta, noise)
     # A tie is never a win, even with --min-delta 0 on a deterministic count.
     if rel > 0 and rel >= bar:
         verdict = "WIN"
@@ -146,35 +226,117 @@ def cmd_compare(a):
         verdict = "LOSS"
     else:
         verdict = "NOISE"
-    print(json.dumps({"verdict": verdict, "best": b, "candidate": c, "gain_rel": round(rel, 4),
-                      "bar_rel": round(bar, 4), "noise_rel": round(noise, 4),
-                      "min_delta": a.min_delta, "direction": a.direction}))
+    return {"verdict": verdict, "best": b, "candidate": c, "gain_rel": round(rel, 4),
+            "bar_rel": round(bar, 4), "noise_rel": round(noise, 4),
+            "min_delta": min_delta, "direction": direction}
 
 
-def cmd_flip(a):
+def cmd_compare(a):
+    print(json.dumps(_compare(_load(a.best), _load(a.cand), a.direction, a.min_delta)))
+
+
+def _flip(judges, best, cand, out, ext=FLIP_EXT):
     rows = []
-    for j in range(1, a.judges + 1):
+    for j in range(1, judges + 1):
         cand_is_a = secrets.randbits(1) == 1
         row = {"judge": j, "A": "candidate" if cand_is_a else "best",
                "B": "best" if cand_is_a else "candidate"}
-        if a.out:
+        if out:
             # File paths unblind a judge as surely as labels do (r00 vs r07), so each judge
             # gets copies under neutral names: OUT/judge-N/A/<file>, OUT/judge-N/B/<file>.
-            src = {"candidate": a.cand, "best": a.best}
+            src = {"candidate": cand, "best": best}
             for side in ("A", "B"):
-                dst = os.path.join(a.out, f"judge-{j}", side)
+                dst = os.path.join(out, f"judge-{j}", side)
                 os.makedirs(dst, exist_ok=True)
                 for name in sorted(os.listdir(src[row[side]])):
-                    if any(name.endswith(ext) for ext in a.ext.split(",")):
+                    if any(name.endswith(e) for e in ext.split(",")):
                         shutil.copyfile(os.path.join(src[row[side]], name), os.path.join(dst, name))
-            row["dir"] = os.path.join(a.out, f"judge-{j}")
+            row["dir"] = os.path.join(out, f"judge-{j}")
         rows.append(row)
-    text = json.dumps(rows)
-    if a.out:
+    if out:
         # The mapping stays outside the judge folders; record it before any judge runs.
-        with open(os.path.join(a.out, "flip.json"), "w") as f:
-            f.write(text + "\n")
-    print(text)
+        with open(os.path.join(out, "flip.json"), "w") as f:
+            f.write(json.dumps(rows) + "\n")
+    return rows
+
+
+def cmd_flip(a):
+    print(json.dumps(_flip(a.judges, a.best, a.cand, a.out, a.ext)))
+
+
+def _sha_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _reply_verdict(text):
+    said = None
+    for line in text.splitlines():
+        m = VERDICT_LINE.match(line)
+        if m:
+            said = m.group(1).upper()
+    return said
+
+
+def _tally(d):
+    flip_path = os.path.join(d, "flip.json")
+    if not os.path.isfile(flip_path):
+        raise PanelError(f"{flip_path} missing; run hc.py flip --out {d} first")
+    try:
+        rows = _load(flip_path)
+    except ValueError:
+        raise PanelError(f"{flip_path} is not valid JSON")
+    votes = []
+    for row in rows:
+        j = row["judge"]
+        reply = os.path.join(d, f"judge-{j}.txt")
+        if not os.path.isfile(reply):
+            raise PanelError(f"judge {j}: {reply} missing; save that judge's full reply there")
+        with open(reply, encoding="utf-8", errors="replace") as f:
+            said = _reply_verdict(f.read())
+        if not said:
+            raise PanelError(f"judge {j}: no 'VERDICT: A|B|TIE' line in {reply}")
+        votes.append({"judge": j, "reply": f"judge-{j}.txt", "reply_sha256": _sha_file(reply), "said": said,
+                      "prefers": "tie" if said == "TIE" else row[said]})
+    n = len(votes)
+    count = {side: sum(v["prefers"] == side for v in votes) for side in ("candidate", "best", "tie")}
+    verdict = "WIN" if count["candidate"] > n / 2 else "LOSS" if count["best"] > n / 2 else "NOISE"
+    return {"dir": d, "judges": n, "votes": votes, "candidate": count["candidate"], "best": count["best"],
+            "tie": count["tie"], "verdict": verdict, "score": f"{count['candidate']}/{n} cand",
+            "flip_sha256": _sha_file(flip_path)}
+
+
+def cmd_tally(a):
+    try:
+        panel = _tally(a.dir)
+    except PanelError as e:
+        sys.exit(f"tally: {e}")
+    _save(os.path.join(a.dir, "panel.json"), panel)
+    print(json.dumps(panel, indent=1))
+
+
+def _panel_fingerprint(panel):
+    return (panel.get("verdict"), panel.get("flip_sha256"),
+            [(v.get("judge"), v.get("reply_sha256")) for v in panel.get("votes", [])])
+
+
+def _verify_panel(path, judges=None):
+    """Recompute the tally from the replies beside panel.json; the saved file is never trusted on its own."""
+    if not os.path.isfile(path):
+        raise PanelError(f"{path} missing; run hc.py tally on its folder")
+    try:
+        saved = _load(path)
+    except ValueError:
+        raise PanelError(f"{path} is not valid JSON")
+    fresh = _tally(os.path.dirname(path) or ".")
+    if _panel_fingerprint(saved) != _panel_fingerprint(fresh):
+        raise PanelError(f"{path} does not match the replies and flip.json beside it; rerun hc.py tally")
+    if judges and fresh["judges"] != judges:
+        raise PanelError(f"the panel has {fresh['judges']} judges; this run uses {judges}")
+    return fresh
 
 
 def _read(path):
@@ -203,17 +365,17 @@ def cmd_log(a):
         print(json.dumps(row))
 
 
+def _log_row(**fields):
+    cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=[f"{k}={v}" for k, v in fields.items()]))
+
+
 def cmd_status(a):
     rows = _read(a.file)
     if not rows:
         sys.exit("status: no rounds logged yet")
     kept = [r for r in rows if r["verdict"].lower() in KEEP_VERDICTS]
-    since_win = 0
-    for r in reversed(rows):
-        if r["verdict"].lower() in KEEP_VERDICTS:
-            break
-        since_win += 1
     rounds = len(rows) - 1  # row 0 is the baseline
+    since_win = _since_win(rows)
     stop = []
     if a.budget and rounds >= a.budget:
         stop.append(f"budget of {a.budget} rounds used")
@@ -225,9 +387,17 @@ def cmd_status(a):
                       "stop": stop or None}, indent=1))
 
 
-CONFIG = os.path.join(".hillclimb", "config.json")
-BEST = os.path.join(".hillclimb", "rounds", "best.json")
-LOG = os.path.join(".hillclimb", "results.tsv")
+def _since_win(rows):
+    since = 0
+    for r in reversed(rows):
+        if r["verdict"].lower() in KEEP_VERDICTS:
+            break
+        since += 1
+    return since
+
+
+def _wins(rows):
+    return sum(r["verdict"].lower() == "keep" for r in rows)
 
 
 def _git(*args):
@@ -244,7 +414,20 @@ def _measure_cfg(cfg, out):
             cmd_measure(ns)
         finally:
             sys.stdout = stdout
-    return json.load(open(out))
+    return _load(out)
+
+
+def _shell(cmd, timeout):
+    try:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return f"timed out: {cmd}"
+    return None if r.returncode == 0 else f"{cmd}: exit {r.returncode}: {(r.stdout + r.stderr).strip()[-300:]}"
+
+
+def _capture(cmd, folder, timeout):
+    os.makedirs(folder, exist_ok=True)
+    return _shell(f"{cmd} {shlex.quote(folder)}", timeout)
 
 
 def _fresh_tree():
@@ -264,11 +447,19 @@ def _settle_mtime():
     time.sleep(1.02 - time.time() % 1.0)
 
 
-def _gates(cfg, base_commit):
-    if cfg.get("frozen") and base_commit:
-        changed = _git("diff", "--name-only", base_commit, "HEAD", "--", *cfg["frozen"]).stdout.split()
-        if changed:
-            return f"frozen file changed: {', '.join(changed)}"
+def _reset_to(commit):
+    _git("reset", "-q", "--hard", commit)
+    _fresh_tree()
+    _settle_mtime()
+
+
+def _frozen_diff(cfg, *revs):
+    if not cfg.get("frozen"):
+        return []
+    return _git("diff", "--name-only", *revs, "--", *cfg["frozen"]).stdout.split()
+
+
+def _run_gates(cfg):
     for g in cfg.get("gates", []):
         try:
             r = subprocess.run(g, shell=True, capture_output=True, text=True, timeout=cfg["timeout"])
@@ -279,72 +470,321 @@ def _gates(cfg, base_commit):
     return None
 
 
+def _digest(path):
+    """sha256 of a path's content, None if absent. Walks git-ignored files too: git cannot see them, a lock must."""
+    if os.path.islink(path):
+        return hashlib.sha256(b"link\0" + os.readlink(path).encode()).hexdigest()
+    if os.path.isfile(path):
+        return _sha_file(path)
+    if not os.path.isdir(path):
+        return None
+    h = hashlib.sha256(b"dir\0")
+    for root, dirs, files in os.walk(path):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_IN_LOCKS)
+        for name in sorted(files + dirs):
+            full = os.path.join(root, name)
+            if name.endswith(".pyc"):
+                continue
+            if os.path.islink(full):
+                body = b"link\0" + os.readlink(full).encode()
+            elif os.path.isfile(full):
+                body = _sha_file(full).encode()
+            else:
+                continue
+            h.update(os.path.relpath(full, path).encode() + b"\0" + body + b"\0")
+    return h.hexdigest()
+
+
+def _lock_paths(cfg):
+    return {p: _digest(p) for p in dict.fromkeys(list(cfg.get("frozen", [])) + list(ALWAYS_LOCKED))}
+
+
+def _lock_sum(paths):
+    return hashlib.sha256(json.dumps(paths, sort_keys=True).encode()).hexdigest()
+
+
+def _baseline_lock():
+    for r in reversed(_read(LOG)):
+        if r["verdict"].lower() == "baseline":
+            m = re.search(r"lock ([0-9a-f]{12})", r.get("notes", ""))
+            return m.group(1) if m else None
+    return None
+
+
+def _lock_changes():
+    if not os.path.isfile(LOCKS):
+        return ["locks.json missing (run hc.py baseline)"]
+    locks = _load(LOCKS)
+    if _lock_sum(locks.get("paths", {})) != locks.get("all") or _baseline_lock() != locks["all"][:12]:
+        return ["locks.json changed since baseline"]
+    return [p for p, h in sorted(locks["paths"].items()) if _digest(p) != h]
+
+
+def _require_locks(run):
+    if not run.v2:
+        return
+    changed = _lock_changes()
+    if changed:
+        raise Refused(f"REFUSED: frozen content changed: {', '.join(changed)}; restore it (git cannot restore "
+                      f"ignored or untracked files) or restart with setup --force")
+
+
+def _preflight_state():
+    return _load(PREFLIGHT) if os.path.isfile(PREFLIGHT) else {}
+
+
+def _preflight_done():
+    pf = _preflight_state()
+    return bool(pf.get("skip")) or bool(pf.get("broken", {}).get("pass") and pf.get("cheat", {}).get("pass"))
+
+
+def _holdout_log():
+    return _load(HOLDOUT) if os.path.isfile(HOLDOUT) else []
+
+
+def _holdout_due():
+    log = _holdout_log()
+    return log[-1].get("pending") if log else None
+
+
+def _overfit_stop():
+    log = _holdout_log()
+    last = log[-1] if log else {}
+    if not last.get("overfit"):
+        return None
+    if last.get("visible_gain") is not None:
+        numbers = f"visible {_pct(last['visible_gain'])}, holdout {_pct(last['holdout_gain'])}"
+    else:
+        numbers = f"{last['wins']} wins, holdout panel {last['score']}"
+    return (f"STOP: overfitting: the visible score climbed but the holdout did not ({numbers}, holdout "
+            f"{last['holdout_verdict']} at round {last['round']}). Report it; do not keep climbing.")
+
+
 def cmd_setup(a):
+    if not a.judges and not (a.cmd and a.direction):
+        _refuse(2, "setup: --cmd and --direction are required (or --judges N for a judge run)")
+    if a.judges is not None and a.judges < 1:
+        _refuse(2, "setup: --judges must be 1 or more")
     cmd_init(argparse.Namespace(dir="."))
     cfg = {"cmd": a.cmd, "regex": a.regex, "direction": a.direction, "min_delta": a.min_delta, "runs": a.runs,
            "warmup": a.warmup, "expect": a.expect, "expect_line": a.expect_line, "gates": a.gate,
-           "frozen": a.frozen, "budget": a.budget, "patience": a.patience, "timeout": a.timeout}
+           "frozen": a.frozen, "budget": a.budget, "patience": a.patience, "timeout": a.timeout,
+           "version": FORMAT_VERSION, "judges": a.judges, "holdout_cmd": a.holdout_cmd}
     if os.path.exists(CONFIG) and not a.force:
         sys.exit("setup: .hillclimb/config.json exists; the score never changes mid-run (use --force to restart "
                  "the run at a new round 0, and note why under Restarts in HILLCLIMB.md)")
-    with open(CONFIG, "w") as f:
-        json.dump(cfg, f, indent=1)
+    _save(CONFIG, cfg)
     print(json.dumps(cfg, indent=1))
+    if not a.holdout_cmd and (a.judges or a.frozen):
+        print("NOTE: no --holdout-cmd; the final number will be the score on the set you climbed on.")
     print("NEXT: fill in .hillclimb/HILLCLIMB.md, commit any pending work, then run: hc.py baseline")
 
 
-def _next(cfg, rows_since_win, rounds, wins):
+def _next(run, since_win, rounds, next_n):
+    cfg = run.cfg
     stop = []
     if cfg["budget"] and rounds >= cfg["budget"]:
         stop.append(f"budget of {cfg['budget']} rounds used")
-    if cfg["patience"] and rows_since_win >= cfg["patience"]:
-        stop.append(f"{rows_since_win} rounds in a row without a win (patience {cfg['patience']})")
+    if cfg["patience"] and since_win >= cfg["patience"]:
+        stop.append(f"{since_win} rounds in a row without a win (patience {cfg['patience']})")
     if stop:
         return "STOP: " + "; ".join(stop) + ". Confirm the best against the baseline, then write the report."
+    if run.v2 and run.judge:
+        folder = os.path.join(ROUNDS, f"r{next_n:02d}")
+        how = (f"capture into {folder}/, flip it against the best into {folder}/blind, save each judge's reply as "
+               f"judge-J.txt there, run hc.py tally {folder}/blind, then: hc.py round \"<what you changed>\" "
+               f"--panel {folder}/blind/panel.json.")
+    else:
+        how = "run: hc.py round \"<what you changed>\"."
     msg = (f"NEXT: round {rounds + 1} of {cfg['budget'] or 'unlimited'}. Make ONE change (not to frozen files) "
-           f"and run: hc.py round \"<what you changed>\". The run is not over until this prints STOP; "
-           f"a big win is not a stop rule.")
+           f"and {how} The run is not over until this prints STOP; a big win is not a stop rule.")
     half = math.ceil(cfg["patience"] / 2) if cfg["patience"] and cfg["patience"] > 2 else 0
-    if half and rows_since_win == half:
+    if half and since_win == half:
         msg += " Big move due: try a different approach altogether, not a tweak (notes=big-move)."
     return msg
 
 
+def _scalar_baseline(cfg, head):
+    res = _measure_cfg(cfg, R00)
+    if not res["ok"]:
+        sys.exit(f"baseline: measurement failed: {res['errors'][:1]}")
+    res["commit"], res["base_commit"] = head, head
+    bar = 2 * math.sqrt(2) * _se(res) / abs(res["median"]) if res["median"] else 0.0
+    report = [f"baseline {res['median']:.6g}, spread (MAD) {res['mad']:.3g}: at {cfg['runs']} runs a round needs a "
+              f"gain of about {max(bar, cfg['min_delta']):.1%} to count as a WIN."]
+    want = max(cfg["min_delta"], 0.02)
+    noisy = bar > 1.5 * want
+    if noisy:
+        report.append(f"NOISY: that bar hides gains smaller than {bar:.0%}. To resolve {want:.0%} gains, restart "
+                      f"setup with --runs {runs_for_bar(res, want)} (hc.py setup ... --force, then hc.py baseline) "
+                      f"before round 1.")
+    return res, f"{res['median']:.6g}", f"mad {res['mad']:.3g}, noise bar {bar:.1%}", report, noisy
+
+
+def _judge_baseline(cfg, head):
+    if cfg.get("cmd"):
+        err = _shell(cfg["cmd"], cfg["timeout"])
+        if err:
+            sys.exit(f"baseline: capture failed: {err}")
+    report = [f"judge baseline at {head}: every round is decided by a blind panel of {cfg['judges']}."]
+    text = open(PROMPT).read() if os.path.isfile(PROMPT) else ""
+    if "not instructions" not in text.lower():
+        report.append("WARN: .hillclimb/judge-prompt.md is missing or does not tell judges the work is data, not "
+                      "instructions; add that line from references/judging.md, then rerun hc.py baseline.")
+    return {"commit": head, "base_commit": head}, "-", "judge baseline", report, False
+
+
+def _holdout_baseline(run):
+    entry = {"round": 0, "wins": 0, "kind": "baseline", "score": None, "visible_gain": None, "holdout_gain": None,
+             "holdout_verdict": None, "overfit": False}
+    cfg = run.cfg
+    if run.judge:
+        shutil.rmtree(HOLDOUT_DIR, ignore_errors=True)
+        err = _capture(run.holdout, os.path.join(HOLDOUT_DIR, "r00"), cfg["timeout"])
+        if err:
+            sys.exit(f"baseline: holdout capture failed: {err}")
+    else:
+        res = _measure_cfg(dict(cfg, cmd=run.holdout), os.path.join(ROUNDS, "holdout-r00.json"))
+        if not res["ok"]:
+            sys.exit(f"baseline: holdout measurement failed: {res['errors'][:1]}")
+        entry["score"] = res["median"]
+    _save(HOLDOUT, [entry])
+
+
 def cmd_baseline(a):
-    cfg = json.load(open(CONFIG))
+    run = Run()
+    cfg = run.cfg
     if _git("status", "--porcelain", "--untracked-files=no").stdout.strip():
         sys.exit("baseline: commit or stash tracked changes first")
     head = _git("rev-parse", "--short", "HEAD").stdout.strip()
     _fresh_tree()
-    err = _gates(cfg, None)
+    if run.v2:
+        if os.path.exists(PREFLIGHT):
+            os.remove(PREFLIGHT)
+        locked = _lock_paths(cfg)
+    err = _run_gates(cfg)
     if err:
         sys.exit(f"baseline: {err}. The gates must pass on the untouched version; fix the setup, not the gate.")
-    res = _measure_cfg(cfg, os.path.join(".hillclimb", "rounds", "r00.json"))
-    if not res["ok"]:
-        sys.exit(f"baseline: measurement failed: {res['errors'][:1]}")
-    res["commit"], res["base_commit"] = head, head
-    with open(BEST, "w") as f:
-        json.dump(res, f, indent=1)
-    bar = 2 * math.sqrt(2) * _se(res) / abs(res["median"]) if res["median"] else 0.0
-    cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=["round=0", "change=baseline", f"score={res['median']:.6g}",
-                                                 "gates=pass", "verdict=baseline",
-                                                 f"notes=mad {res['mad']:.3g}, noise bar {bar:.1%}"]))
-    print(f"baseline {res['median']:.6g}, spread (MAD) {res['mad']:.3g}: at {cfg['runs']} runs a round needs a gain "
-          f"of about {max(bar, cfg['min_delta']):.1%} to count as a WIN.")
-    want = max(cfg["min_delta"], 0.02)
-    if bar > 1.5 * want:
-        need = runs_for_bar(res, want)
-        print(f"NOISY: that bar hides gains smaller than {bar:.0%}. To resolve {want:.0%} gains, restart setup with "
-              f"--runs {need} (hc.py setup ... --force, then hc.py baseline) before round 1.")
+    best, score, notes, report, noisy = (_judge_baseline if run.judge else _scalar_baseline)(cfg, head)
+    if run.holdout:
+        _holdout_baseline(run)
+    if run.v2:
+        after = _lock_paths(cfg)
+        changed = [p for p in locked if locked[p] != after[p]]
+        if changed:
+            sys.exit(f"baseline: the score command or a gate changed frozen content: {', '.join(changed)}")
+        locks = {"paths": locked, "all": _lock_sum(locked)}
+        _save(LOCKS, locks)
+        notes += f", lock {locks['all'][:12]}"
+    _save(BEST, best)
+    _log_row(round=0, change="baseline", score=score, gates="pass", verdict="baseline", notes=notes)
+    print("\n".join(report))
+    if noisy:
         return
-    print(_next(cfg, 0, 0, 0))
+    if run.v2:
+        print("PRE-FLIGHT: before round 1, break the work on purpose and run hc.py preflight broken, restore it; "
+              "change one frozen path and run hc.py preflight cheat, restore it.")
+    print(_next(run, 0, 0, len(_read(LOG))))
+
+
+def _round_refusal(run, a):
+    """Reasons to refuse before anything is committed (exit 2)."""
+    if a.verdict and a.panel:
+        return "round: give --panel or --verdict, not both"
+    if not run.v2:
+        return None
+    if a.verdict or (run.judge and not a.panel):
+        return VERDICT_REFUSAL
+    if a.panel and not run.judge:
+        return "round: --panel is for judge runs (setup --judges N); a scalar round is measured"
+    if not _preflight_done():
+        return PREFLIGHT_REFUSAL
+    due = _holdout_due()
+    if due:
+        return (f"round: holdout check due; judge {due}, save each reply as judge-J.txt there, run hc.py tally "
+                f"{due}, then hc.py holdout --panel {os.path.join(due, 'panel.json')}")
+    return None
+
+
+def _round_panel(run, path, n):
+    want = os.path.normpath(os.path.join(ROUNDS, f"r{n:02d}", "blind", "panel.json"))
+    if _rel(path) != want:
+        raise Refused(f"REFUSED: {path} is not this round's panel; round {n} reads {want}")
+    try:
+        return _verify_panel(path, run.cfg.get("judges"))
+    except PanelError as e:
+        raise Refused(f"REFUSED: {e}")
+
+
+def _measured(cfg, n):
+    out = os.path.join(ROUNDS, f"r{n:02d}.json")
+    cand = _measure_cfg(cfg, out)
+    if not cand["ok"]:
+        return "LOSS", "", f"measurement failed: {cand['errors'][:1]}", "fail"
+    c = _compare(_load(BEST), cand, cfg["direction"], cfg["min_delta"])
+    return c["verdict"], f"{cand['median']:.6g}", f"gain {c['gain_rel']:+.1%}, bar {c['bar_rel']:.1%}", "pass"
+
+
+def _score_round(run, a, best, n):
+    """Judge one committed candidate: (verdict, score, notes, gates). Raises Refused."""
+    cfg = run.cfg
+    changed = _frozen_diff(cfg, best["base_commit"], "HEAD")
+    if changed:
+        return "LOSS", "", f"frozen file changed: {', '.join(changed)}", "fail"
+    _require_locks(run)
+    err = _run_gates(cfg)
+    if err:
+        result = ("LOSS", "", err, "fail")
+    elif a.panel:
+        panel = _round_panel(run, a.panel, n)
+        result = (panel["verdict"], panel["score"], f"panel {panel['score']}", "pass")
+    elif a.verdict:
+        result = (a.verdict.upper(), a.score or "", a.notes or "", "pass")
+    else:
+        result = _measured(cfg, n)
+    _require_locks(run)
+    return result
+
+
+def _holdout_check(run, n, wins, kind):
+    """Score the best on the holdout. Returns an error line, or None once the check is recorded or due."""
+    cfg = run.cfg
+    entry = {"round": n, "wins": wins, "kind": kind, "score": None, "visible_gain": None, "holdout_gain": None,
+             "holdout_verdict": None, "overfit": False}
+    if run.judge:
+        folder = os.path.join(HOLDOUT_DIR, f"r{n:02d}")
+        if os.path.exists(folder):
+            return f"HOLDOUT: {folder} is already taken; record it with hc.py holdout --panel"
+        err = _capture(run.holdout, os.path.join(folder, "cand"), cfg["timeout"])
+        if err:
+            return f"HOLDOUT: capture failed, no check taken: {err}"
+        blind = os.path.join(folder, "blind")
+        _flip(cfg["judges"], os.path.join(HOLDOUT_DIR, "r00"), os.path.join(folder, "cand"), blind)
+        entry["pending"] = blind
+        print(f"HOLDOUT ({kind}): due. Run {cfg['judges']} fresh judges on {blind}/judge-J, save each full reply as "
+              f"{blind}/judge-J.txt, run hc.py tally {blind}, then hc.py holdout --panel {blind}/panel.json. "
+              f"The next round is refused until then.")
+    else:
+        res = _measure_cfg(dict(cfg, cmd=run.holdout), os.path.join(ROUNDS, f"holdout-r{n:02d}.json"))
+        visible = _compare(_load(R00), _load(BEST), cfg["direction"], cfg["min_delta"])
+        held = _compare(_load(os.path.join(ROUNDS, "holdout-r00.json")), res, cfg["direction"], cfg["min_delta"])
+        entry.update(score=res.get("median"), visible_gain=visible.get("gain_rel"),
+                     holdout_gain=held.get("gain_rel"), holdout_verdict=held["verdict"],
+                     overfit=visible["verdict"] == "WIN" and held["verdict"] != "WIN")
+        print(f"HOLDOUT ({kind}): visible {_pct(entry['visible_gain'])} ({visible['verdict']}), "
+              f"holdout {_pct(entry['holdout_gain'])} ({held['verdict']})")
+    _save(HOLDOUT, _holdout_log() + [entry])
+    return None
 
 
 def cmd_round(a):
-    cfg = json.load(open(CONFIG))
-    best = json.load(open(BEST))
-    rows = _read(LOG)
-    n = len(rows)
+    run = Run()
+    cfg = run.cfg
+    early = _round_refusal(run, a)
+    if early:
+        _refuse(2, early)
+    best = _load(BEST)
+    n = len(_read(LOG))
     _fresh_tree()
     _git("add", "-A")
     if _git("diff", "--cached", "--quiet").returncode != 0:
@@ -352,65 +792,145 @@ def cmd_round(a):
     head = _git("rev-parse", "--short", "HEAD").stdout.strip()
     if _git("rev-parse", "HEAD").stdout.strip() == _git("rev-parse", best["commit"]).stdout.strip():
         sys.exit("round: nothing changed since the best; make one change first")
-    verdict, score, notes, gates = None, "", "", "pass"
-    if a.verdict:
-        err = _gates(cfg, best["base_commit"])
-        if err:
-            verdict, gates, notes = "LOSS", "fail", err
-        else:
-            verdict, score, notes = a.verdict.upper(), a.score or "", a.notes or ""
-    else:
-        err = _gates(cfg, best["base_commit"])
-        if err:
-            verdict, gates, notes = "LOSS", "fail", err
-        else:
-            out = os.path.join(".hillclimb", "rounds", f"r{n:02d}.json")
-            cand = _measure_cfg(cfg, out)
-            if not cand["ok"]:
-                verdict, gates, notes = "LOSS", "fail", f"measurement failed: {cand['errors'][:1]}"
-            else:
-                cmp_ns = argparse.Namespace(best=BEST, cand=out, direction=cfg["direction"], min_delta=cfg["min_delta"])
-                buf = __import__("io").StringIO()
-                stdout, sys.stdout = sys.stdout, buf
-                try:
-                    cmd_compare(cmp_ns)
-                finally:
-                    sys.stdout = stdout
-                c = json.loads(buf.getvalue())
-                verdict, score = c["verdict"], f"{cand['median']:.6g}"
-                notes = f"gain {c['gain_rel']:+.1%}, bar {c['bar_rel']:.1%}"
-                if verdict == "NOISE" and a.simpler:
-                    verdict, notes = "KEEP", notes + ", simpler"
+    try:
+        verdict, score, notes, gates = _score_round(run, a, best, n)
+    except Refused as r:
+        _log_row(round=n, commit=head, change=a.change, score="", gates="-", verdict="refused", notes=str(r))
+        _reset_to(best["commit"])
+        print(r)
+        sys.exit(3)
     if a.notes and not a.verdict:
         notes = f"{notes}, {a.notes}" if notes else a.notes
+    if verdict == "NOISE" and a.simpler and not a.verdict:
+        verdict, notes = "KEEP", notes + ", simpler"
     keep = verdict in ("WIN", "KEEP")
-    cmd_log(argparse.Namespace(file=LOG, quiet=True, fields=[f"round={n}", f"commit={head}", f"change={a.change}",
-                                                 f"score={score}", f"gates={gates}",
-                                                 f"verdict={'keep' if keep else 'revert'}",
-                                                 f"notes={verdict}: {notes[:200]}"]))
+    _log_row(round=n, commit=head, change=a.change, score=score, gates=gates,
+             verdict="keep" if keep else "revert", notes=f"{verdict}: {notes[:200]}")
     if keep:
-        if not a.verdict:
-            new = json.load(open(os.path.join(".hillclimb", "rounds", f"r{n:02d}.json")))
-            new["commit"], new["base_commit"] = head, best["base_commit"]
-            with open(BEST, "w") as f:
-                json.dump(new, f, indent=1)
-        else:
-            best["commit"] = head
-            with open(BEST, "w") as f:
-                json.dump(best, f, indent=1)
+        measured = not (a.verdict or a.panel)
+        new = _load(os.path.join(ROUNDS, f"r{n:02d}.json")) if measured else dict(best)
+        new["commit"], new["base_commit"] = head, best["base_commit"]
+        _save(BEST, new)
     else:
-        _git("reset", "-q", "--hard", best["commit"])
-        _fresh_tree()
-        _settle_mtime()
+        _reset_to(best["commit"])
     rows = _read(LOG)
-    since = 0
-    for r in reversed(rows):
-        if r["verdict"].lower() in KEEP_VERDICTS:
-            break
-        since += 1
-    wins = sum(r["verdict"].lower() == "keep" for r in rows)
+    wins = _wins(rows)
     print(f"{verdict}: {notes}" + (" -> kept" if keep else f" -> reverted to {best['commit']}"))
-    print(_next(cfg, since, len(rows) - 1, wins))
+    line = _next(run, _since_win(rows), len(rows) - 1, len(rows))
+    if run.holdout:
+        kind = "final" if line.startswith("STOP") else "check" if keep and wins % 5 == 0 else None
+        err = _holdout_check(run, n, wins, kind) if kind else None
+        if err:
+            print(err)
+        line = _overfit_stop() or line
+    print(line)
+
+
+def _at_best(best):
+    if _git("status", "--porcelain", "--untracked-files=no").stdout.strip():
+        return False
+    return _git("rev-parse", "HEAD").stdout.strip() == _git("rev-parse", best["commit"]).stdout.strip()
+
+
+def _record_holdout_panel(run, path):
+    log = _holdout_log()
+    due = log[-1].get("pending") if log else None
+    if not due:
+        _refuse(2, "holdout: no judged holdout check is due")
+    want = os.path.normpath(os.path.join(due, "panel.json"))
+    if _rel(path) != want:
+        _refuse(2, f"holdout: the due check reads {want}")
+    try:
+        panel = _verify_panel(path, run.cfg["judges"])
+    except PanelError as e:
+        sys.exit(f"holdout: {e}")
+    last = log[-1]
+    last.pop("pending")
+    last.update(score=panel["score"], holdout_verdict=panel["verdict"],
+                overfit=last["wins"] > 0 and panel["verdict"] != "WIN")
+    _save(HOLDOUT, log)
+    print(f"HOLDOUT ({last['kind']}): panel {panel['score']} -> {panel['verdict']}")
+    after = "the run had stopped; write the report." if last["kind"] == "final" else "continue with the next round."
+    print(_overfit_stop() or f"NEXT: holdout recorded; {after}")
+
+
+def cmd_holdout(a):
+    run = Run()
+    if not run.holdout:
+        _refuse(2, "holdout: this run has no --holdout-cmd")
+    if a.panel:
+        _record_holdout_panel(run, a.panel)
+        return
+    if _holdout_due():
+        _refuse(2, f"holdout: a check is already due; judge {_holdout_due()} and record it with --panel")
+    if not _at_best(_load(BEST)):
+        _refuse(2, "holdout: the tree is not at the best commit; commit, revert or stash first")
+    rows = _read(LOG)
+    err = _holdout_check(run, len(rows) - 1, _wins(rows), "check")
+    if err:
+        _refuse(2, err)
+    stop = _overfit_stop()
+    if stop:
+        print(stop)
+
+
+def _preflight_broken(run, panel):
+    cfg = run.cfg
+    if run.judge:
+        root = os.path.normpath(os.path.join(ROUNDS, "preflight")) + os.sep
+        if not panel or not _rel(panel).startswith(root) or os.path.basename(panel) != "panel.json":
+            _refuse(2, f"preflight broken: a judge run needs --panel {root}<name>/blind/panel.json, best = the "
+                       f"baseline captures, candidate = the broken version")
+        try:
+            p = _verify_panel(panel, cfg["judges"])
+        except PanelError as e:
+            sys.exit(f"preflight: {e}")
+        return {"pass": p["verdict"] == "LOSS", "why": f"panel {p['score']}, {p['verdict']}", "panel": panel}
+    if panel:
+        _refuse(2, "preflight broken: --panel is for judge runs; a scalar run is measured")
+    _fresh_tree()
+    err = _run_gates(cfg)
+    if err:
+        return {"pass": True, "why": err}
+    res = _measure_cfg(cfg, os.path.join(ROUNDS, "preflight-broken.json"))
+    if not res["ok"]:
+        return {"pass": True, "why": f"measurement failed: {res['errors'][:1]}"}
+    c = _compare(_load(R00), res, cfg["direction"], cfg["min_delta"])
+    return {"pass": c["verdict"] == "LOSS", "why": f"gain {c['gain_rel']:+.1%}, {c['verdict']}"}
+
+
+def _preflight_cheat(run):
+    changed = _frozen_diff(run.cfg, "HEAD") + (_lock_changes() if run.v2 else [])
+    changed = list(dict.fromkeys(changed))
+    return {"pass": bool(changed), "why": ", ".join(changed) or "no frozen change seen"}
+
+
+def cmd_preflight(a):
+    run = Run()
+    if not os.path.isfile(BEST):
+        _refuse(2, "preflight: run hc.py baseline first")
+    pf = _preflight_state()
+    if a.step == "skip":
+        if not a.why:
+            _refuse(2, "preflight skip: give the reason with --why \"...\"")
+        pf["skip"] = a.why
+        _save(PREFLIGHT, pf)
+        print(f"pre-flight skipped: {a.why}")
+        return
+    result = _preflight_broken(run, a.panel) if a.step == "broken" else _preflight_cheat(run)
+    pf[a.step] = result
+    _save(PREFLIGHT, pf)
+    if a.step == "broken" and result["pass"]:
+        dirty = _git("status", "--porcelain").stdout.rstrip()
+        print(f"PASS: the measure saw the broken version ({result['why']}). Restore these before round 1:\n"
+              f"{dirty or '(nothing to restore)'}")
+    elif a.step == "broken":
+        print(f"{BROKEN_FAIL} ({result['why']})")
+    elif result["pass"]:
+        print(f"PASS: the change to {result['why']} was caught. Restore it before round 1.")
+    else:
+        print("FAIL: no frozen change was seen; change one --frozen path or .hillclimb/judge-prompt.md on purpose, "
+              "then run it again.")
 
 
 def main():
@@ -418,9 +938,12 @@ def main():
     sub = p.add_subparsers(dest="sub", required=True)
 
     s = sub.add_parser("setup")
-    s.add_argument("--cmd", required=True, help="the scoring command, run from the repo root")
+    s.add_argument("--cmd", help="the scoring command, run from the repo root (judge runs: the capture command)")
     s.add_argument("--regex", help="metric = group 1 of the last match; omit to score the command's wall time")
-    s.add_argument("--direction", choices=["min", "max"], required=True)
+    s.add_argument("--direction", choices=["min", "max"])
+    s.add_argument("--judges", type=int, help="a judge run: rounds are decided by a blind panel of N judges")
+    s.add_argument("--holdout-cmd", help="score command over held-out data the builder never opens (judge runs: "
+                                         "captures held-out views into the folder appended as its last argument)")
     s.add_argument("--min-delta", type=float, default=0.02)
     s.add_argument("--runs", type=int, default=5)
     s.add_argument("--warmup", type=int, default=1)
@@ -439,12 +962,27 @@ def main():
 
     s = sub.add_parser("round")
     s.add_argument("change", help="the one change this round made, in a few words")
+    s.add_argument("--panel", help="judge mode: this round's .hillclimb/rounds/rNN/blind/panel.json from hc.py tally")
     s.add_argument("--verdict", choices=["WIN", "LOSS", "NOISE", "win", "loss", "noise"],
-                   help="judge mode: the unblinded panel verdict, decided outside this script")
-    s.add_argument("--score", help="judge mode: the vote, e.g. '3/3 cand'")
+                   help="legacy runs only: the unblinded panel verdict, decided outside this script")
+    s.add_argument("--score", help="legacy runs with --verdict: the vote, e.g. '3/3 cand'")
     s.add_argument("--simpler", action="store_true", help="the change deletes more than it adds: keep it at equal score")
     s.add_argument("--notes")
     s.set_defaults(fn=cmd_round)
+
+    s = sub.add_parser("tally")
+    s.add_argument("dir", help="the blind folder: flip.json plus each judge's reply as judge-J.txt")
+    s.set_defaults(fn=cmd_tally)
+
+    s = sub.add_parser("preflight")
+    s.add_argument("step", choices=["broken", "cheat", "skip"])
+    s.add_argument("--panel", help="judge runs, broken: a panel under .hillclimb/rounds/preflight/")
+    s.add_argument("--why", help="skip: the reason, kept in the record")
+    s.set_defaults(fn=cmd_preflight)
+
+    s = sub.add_parser("holdout")
+    s.add_argument("--panel", help="judge runs: record the due holdout check's panel.json")
+    s.set_defaults(fn=cmd_holdout)
 
     s = sub.add_parser("init")
     s.add_argument("dir", nargs="?", default=".")
@@ -477,8 +1015,7 @@ def main():
     s.add_argument("--best", help="folder with the best version's artifacts")
     s.add_argument("--cand", help="folder with the candidate's artifacts")
     s.add_argument("--out", help="write blinded copies per judge here, plus flip.json")
-    s.add_argument("--ext", default=".png,.jpg,.jpeg,.webp,.txt,.md,.html,.svg",
-                   help="comma-separated file endings to copy")
+    s.add_argument("--ext", default=FLIP_EXT, help="comma-separated file endings to copy")
     s.set_defaults(fn=cmd_flip)
 
     s = sub.add_parser("log")
