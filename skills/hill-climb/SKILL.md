@@ -91,7 +91,7 @@ and `config.json` are covered too. `round` checks the locks before the gates and
 change refuses the round (logged `refused`, exit 3). Git cannot restore an ignored file, so put it back by
 hand or restart with `setup --force`.
 
-Runs set up before 2026-11-12 have no locks: hc.py prints one `legacy run` line and keeps the old checks
+A run set up before locks existed has none: hc.py prints one `legacy run` line and keeps the old checks
 (and `--verdict`). Let them finish; start new runs with `setup`.
 
 ## 3. One round
