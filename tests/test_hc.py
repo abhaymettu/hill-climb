@@ -180,6 +180,22 @@ class FrozenContentLocks(Case):
         r = repo.hc("round", "bigger value")
         self.assertRefused(r, repo, best, "locks.json changed since baseline")
 
+    def test_editing_the_target_of_a_frozen_symlink_refuses_the_round(self):
+        repo = self.repo()
+        repo.write("shared/real.txt", "a\nb\nc\n")
+        os.remove(repo.path("data/set.txt"))
+        os.symlink("../shared/real.txt", repo.path("data/set.txt"))
+        repo.write(".gitignore", "data/\nheld/\nshared/\n")
+        sh("git commit -qam ignore-shared", repo.root)
+        repo.setup_scalar()
+        repo.baseline()
+        repo.skip_preflight()
+        best = repo.best_commit()
+        repo.write("shared/real.txt", "a\nb\nc\nd\ne\n")
+        repo.value(11)
+        r = repo.hc("round", "bigger value")
+        self.assertRefused(r, repo, best, "frozen content changed: data/set.txt")
+
     def test_after_restoring_the_frozen_file_an_honest_round_is_kept(self):
         repo = self.started()
         repo.write("data/set.txt", "a\nb\nc\nd\n")
@@ -345,6 +361,46 @@ class JudgeRun(Case):
         self.assertEqual(repo.best_commit(), best)
         self.assertEqual(repo.head(), best)
 
+    def test_a_blind_folder_copied_from_another_round_is_refused(self):
+        repo = self.judge_repo()
+        repo.value(11)
+        blind1 = self.panel(repo, 1, ["candidate", "candidate", "candidate"])
+        repo.hc("tally", blind1)
+        self.assertEqual(repo.hc("round", "r1", "--panel", f"{blind1}/panel.json").returncode, 0)
+        best = repo.best_commit()
+        repo.value(5)
+        shutil.copytree(repo.path(blind1), repo.path(".hillclimb/rounds/r02/blind"))
+        r = repo.hc("round", "r2 with r1's folder copied", "--panel", ".hillclimb/rounds/r02/blind/panel.json")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("made for another folder", r.stdout + r.stderr)
+        self.assertEqual(repo.best_commit(), best)
+
+    def test_a_panel_mistake_keeps_the_work_and_the_round_number(self):
+        repo = self.judge_repo()
+        repo.value(11)
+        blind = self.panel(repo, 1, ["candidate", "candidate", "candidate"])
+        repo.hc("tally", blind)
+        os.remove(repo.path(f"{blind}/judge-3.txt"))
+        r = repo.hc("round", "bigger value", "--panel", f"{blind}/panel.json")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertEqual(len(repo.rows()), 1)
+        self.assertEqual(repo.read("work.py"), "VALUE = 11\n")
+        self.panel(repo, 1, ["candidate", "candidate", "candidate"])
+        repo.hc("tally", blind)
+        r = repo.hc("round", "bigger value", "--panel", f"{blind}/panel.json")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(repo.rows()[-1]["round"], "1")
+
+    def test_a_reply_saved_with_a_byte_order_mark_tallies(self):
+        repo = self.judge_repo()
+        blind = self.panel(repo, 1, ["candidate", "candidate", "candidate"])
+        text = repo.read(f"{blind}/judge-1.txt").splitlines()[-1]
+        with open(repo.path(f"{blind}/judge-1.txt"), "w", encoding="utf-8-sig") as f:
+            f.write(text + "\r\n")
+        r = repo.hc("tally", blind)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(json.loads(repo.read(f"{blind}/panel.json"))["candidate"], 3)
+
     def test_judge_baseline_warns_when_the_prompt_lacks_the_data_line(self):
         repo = self.repo()
         repo.hc("setup", "--judges", "3")
@@ -446,6 +502,14 @@ class Holdout(Case):
         self.assertIn("STOP: overfitting", out[-1])
         self.assertEqual(self.checks(repo)[-1]["kind"], "check")
 
+    def test_a_failed_holdout_measurement_is_not_called_overfitting(self):
+        repo, _ = self.climb(HOLDOUT_TRACKS, budget=20, wins=1)
+        os.rename(repo.path("held/set.txt"), repo.path("held/moved.txt"))
+        r = repo.hc("holdout")
+        self.assertIn("measurement failed", r.stdout + r.stderr)
+        self.assertNotIn("overfitting", r.stdout + r.stderr)
+        self.assertEqual(len(self.checks(repo)), 1)
+
     def test_holdout_that_climbs_too_does_not_stop_the_run(self):
         repo, out = self.climb(HOLDOUT_TRACKS, budget=2, wins=2)
         self.assertNotIn("overfitting", out[-1])
@@ -488,6 +552,13 @@ class LegacyRun(Case):
         r = repo.hc("round", "bigger value", "--verdict", "WIN", "--score", "3/3 cand")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(repo.rows()[-1]["verdict"], "keep")
+
+    def test_legacy_notes_keep_the_old_order(self):
+        repo = self.legacy()
+        repo.write("work.py", "VALUE = 10.1\n")
+        r = repo.hc("round", "tiny change", "--simpler", "--notes", "mynote")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(repo.rows()[-1]["notes"].endswith("simpler, mynote"), repo.rows()[-1]["notes"])
 
     def test_legacy_round_is_not_refused_for_an_ignored_frozen_edit(self):
         repo = self.legacy()

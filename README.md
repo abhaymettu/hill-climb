@@ -94,8 +94,8 @@ hc.py round "precompile the regex"   # commit, gates, measure, keep or revert, l
 ```
 
 `setup` freezes the score, gates and stop rules before round one, so every round is measured the same way.
-Frozen files are locked by content hash, git-ignored eval sets and the judge prompt included, and a round that
-touches them is refused. The pre-flight proves the score can see a broken version and catches a cheat before
+Frozen files are locked by content hash, git-ignored eval sets and the judge prompt included: a round that edits
+a tracked frozen file is reverted, and one that changes anything git cannot restore is refused. The pre-flight proves the score can see a broken version and catches a cheat before
 any round counts.
 `baseline` prints the noise band and, if it is too wide for the gains you are after, how many runs would
 resolve them. Each `round` reverts a change that breaks a gate, then compares repeated measurements against the

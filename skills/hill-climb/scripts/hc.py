@@ -15,8 +15,8 @@
   hc.py log FILE key=value ...           append one row to results.tsv
   hc.py status FILE [--patience N] [--budget N]   rounds, best vs baseline, whether a stop rule fired
 
-Exit codes: 0 ok; 2 refused before anything was committed; 3 round refused after committing (a `refused` row is
-logged and the tree is back at the best).
+Exit codes: 0 ok; 1 error; 2 refused before anything was committed; 3 round refused after committing (a `refused`
+row is logged and the tree is back at the best).
 
 Standard library only. Python 3.8+.
 """
@@ -60,7 +60,7 @@ VERDICT_LINE = re.compile(r"^\s*\**\s*VERDICT\s*\**\s*:\s*\**\s*(A|B|TIE)\s*\**\
 LEGACY_WARNING = ("hc.py: legacy run (set up before content locks and the holdout); using the old checks. "
                   "Restart with setup --force to get them.")
 VERDICT_REFUSAL = ("round: --verdict is not accepted; save each judge's reply as rounds/rNN/blind/judge-J.txt, "
-                   "run hc.py tally, then round --panel")
+                   "run hc.py tally, then round --panel (a judge run is set up with setup --judges N)")
 PREFLIGHT_REFUSAL = ("round: pre-flight not done; run hc.py preflight broken and hc.py preflight cheat "
                      "(see SKILL.md section 2) or hc.py preflight skip --why \"...\"")
 BROKEN_FAIL = ("FAIL: the measure cannot tell a broken version from the baseline; fix the capture, the views or "
@@ -295,7 +295,7 @@ def _tally(d):
         reply = os.path.join(d, f"judge-{j}.txt")
         if not os.path.isfile(reply):
             raise PanelError(f"judge {j}: {reply} missing; save that judge's full reply there")
-        with open(reply, encoding="utf-8", errors="replace") as f:
+        with open(reply, encoding="utf-8-sig", errors="replace") as f:
             said = _reply_verdict(f.read())
         if not said:
             raise PanelError(f"judge {j}: no 'VERDICT: A|B|TIE' line in {reply}")
@@ -473,7 +473,8 @@ def _run_gates(cfg):
 def _digest(path):
     """sha256 of a path's content, None if absent. Walks git-ignored files too: git cannot see them, a lock must."""
     if os.path.islink(path):
-        return hashlib.sha256(b"link\0" + os.readlink(path).encode()).hexdigest()
+        target = _digest(os.path.realpath(path)) if os.path.exists(path) else None
+        return hashlib.sha256(b"link\0" + os.readlink(path).encode() + b"\0" + str(target).encode()).hexdigest()
     if os.path.isfile(path):
         return _sha_file(path)
     if not os.path.isdir(path):
@@ -486,7 +487,7 @@ def _digest(path):
             if name.endswith(".pyc"):
                 continue
             if os.path.islink(full):
-                body = b"link\0" + os.readlink(full).encode()
+                body = _digest(full).encode()
             elif os.path.isfile(full):
                 body = _sha_file(full).encode()
             else:
@@ -698,12 +699,17 @@ def _round_refusal(run, a):
     """Reasons to refuse before anything is committed (exit 2)."""
     if a.verdict and a.panel:
         return "round: give --panel or --verdict, not both"
+    if run.v2 and (a.verdict or (run.judge and not a.panel)):
+        return VERDICT_REFUSAL
+    if run.v2 and a.panel and not run.judge:
+        return "round: --panel is for judge runs (setup --judges N); a scalar round is measured"
+    if a.panel:
+        try:
+            a.tallied = _round_panel(run, a.panel, len(_read(LOG)))
+        except PanelError as e:
+            return f"round: {e}; nothing was committed, fix the panel and run the same round again"
     if not run.v2:
         return None
-    if a.verdict or (run.judge and not a.panel):
-        return VERDICT_REFUSAL
-    if a.panel and not run.judge:
-        return "round: --panel is for judge runs (setup --judges N); a scalar round is measured"
     if not _preflight_done():
         return PREFLIGHT_REFUSAL
     due = _holdout_due()
@@ -714,13 +720,17 @@ def _round_refusal(run, a):
 
 
 def _round_panel(run, path, n):
-    want = os.path.normpath(os.path.join(ROUNDS, f"r{n:02d}", "blind", "panel.json"))
+    blind = os.path.normpath(os.path.join(ROUNDS, f"r{n:02d}", "blind"))
+    want = os.path.join(blind, "panel.json")
     if _rel(path) != want:
-        raise Refused(f"REFUSED: {path} is not this round's panel; round {n} reads {want}")
-    try:
-        return _verify_panel(path, run.cfg.get("judges"))
-    except PanelError as e:
-        raise Refused(f"REFUSED: {e}")
+        raise PanelError(f"{path} is not this round's panel; round {n} reads {want}")
+    panel = _verify_panel(path, run.cfg.get("judges"))
+    # flip records each judge's folder, so a blind folder copied from another round still names that round.
+    for row in _load(os.path.join(blind, "flip.json")):
+        if _rel(row.get("dir", "")) != os.path.join(blind, f"judge-{row['judge']}"):
+            raise PanelError(f"flip.json in {blind} was made for another folder ({row.get('dir')}); "
+                             f"run hc.py flip --out {blind} for this round")
+    return panel
 
 
 def _measured(cfg, n):
@@ -743,7 +753,7 @@ def _score_round(run, a, best, n):
     if err:
         result = ("LOSS", "", err, "fail")
     elif a.panel:
-        panel = _round_panel(run, a.panel, n)
+        panel = a.tallied
         result = (panel["verdict"], panel["score"], f"panel {panel['score']}", "pass")
     elif a.verdict:
         result = (a.verdict.upper(), a.score or "", a.notes or "", "pass")
@@ -773,6 +783,8 @@ def _holdout_check(run, n, wins, kind):
               f"The next round is refused until then.")
     else:
         res = _measure_cfg(dict(cfg, cmd=run.holdout), os.path.join(ROUNDS, f"holdout-r{n:02d}.json"))
+        if not res["ok"]:
+            return f"HOLDOUT: measurement failed, no check taken: {res['errors'][:1]}"
         visible = _compare(_load(R00), _load(BEST), cfg["direction"], cfg["min_delta"])
         held = _compare(_load(os.path.join(ROUNDS, "holdout-r00.json")), res, cfg["direction"], cfg["min_delta"])
         entry.update(score=res.get("median"), visible_gain=visible.get("gain_rel"),
@@ -806,10 +818,10 @@ def cmd_round(a):
         _reset_to(best["commit"])
         print(r)
         sys.exit(3)
-    if a.notes and not a.verdict:
-        notes = f"{notes}, {a.notes}" if notes else a.notes
     if verdict == "NOISE" and a.simpler and not a.verdict:
         verdict, notes = "KEEP", notes + ", simpler"
+    if a.notes and not a.verdict:
+        notes = f"{notes}, {a.notes}" if notes else a.notes
     keep = verdict in ("WIN", "KEEP")
     _log_row(round=n, commit=head, change=a.change, score=score, gates=gates,
              verdict="keep" if keep else "revert", notes=f"{verdict}: {notes[:200]}")

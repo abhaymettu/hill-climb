@@ -107,7 +107,9 @@ Runs set up before 2026-11-12 have no locks: hc.py prints one `legacy run` line 
    - Judge mode: run the panel first (capture into the folder the NEXT line names, `flip`, judges, save each
      reply as `blind/judge-N.txt`, `hc.py tally <blind dir>`, see `references/judging.md`), then
      `hc.py round "<change>" --panel .hillclimb/rounds/rNN/blind/panel.json`. The script counts the votes; a
-     typed `--verdict` is refused, and so is a panel from another round or a reply edited after the tally.
+     typed `--verdict` is refused, and so is a panel flipped for another round or a reply edited after the
+     tally (nothing is committed, so fix it and run the same round again). The script can check that the
+     record is consistent, not who wrote a reply: replies come only from fresh-context judges, saved unedited.
 3. Without `round` (no config, an unusual score), do the same steps by hand, in this order: commit
    (`git commit -am "r07: <change>"`); run the gates, any failure is a loss; `hc.py measure --runs 5 --regex
    '<re>' --out .hillclimb/rounds/r07.json -- <cmd>`; `hc.py compare .hillclimb/rounds/best.json
@@ -247,3 +249,6 @@ report it, do not hide it.
   after (`tests/test_hc.py`). Any check built on git sees only what git tracks.
 - 2026-11-12: a climb on a fixed set needs a holdout the script runs, not advice to keep one; and a panel that
   cannot see the views votes TIE every round, so prove the measure separates a broken version before round 1.
+- 2026-11-12, from the review: check what you can before the commit. A panel checked after `round` committed
+  reset an honest round's work over a missing reply file. And a copied blind folder passed until flip.json was
+  tied to its own folder. The script can prove a record is consistent, never who wrote a judge reply.

@@ -55,8 +55,8 @@ judges) with their setup files and logs. Read one if you want to see what a fini
 
 ## Tests
 
-`python3 -m unittest discover -s tests -v` runs the behaviour tests of `hc.py` in throwaway git repos (about
-20 seconds, standard library only). `HC=/path/to/hc.py` points them at another copy, such as an installed one.
+`python3 -m unittest discover -s tests -v` runs the behaviour tests of `hc.py` in throwaway git repos (under a
+minute, standard library only). `HC=/path/to/hc.py` points them at another copy, such as an installed one.
 
 ## The benchmark
 
