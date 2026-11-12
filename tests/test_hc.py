@@ -210,6 +210,16 @@ class FrozenContentLocks(Case):
         self.assertEqual(repo.rows()[-1]["verdict"], "revert")
         self.assertEqual(repo.head(), best)
 
+    def test_baseline_refuses_a_frozen_file_a_revert_would_delete(self):
+        repo = self.repo()
+        repo.write(".gitignore", "held/\n")
+        sh("git commit -qam 'data no longer ignored'", repo.root)
+        repo.setup_scalar()
+        r = repo.hc("baseline")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("untracked and not ignored: data/set.txt", r.stdout + r.stderr)
+        self.assertEqual(repo.read("data/set.txt"), "a\nb\nc\n")
+
     def test_tracked_frozen_change_is_still_a_reverted_loss(self):
         repo = self.started(ignore_data=False)
         best = repo.best_commit()

@@ -659,6 +659,13 @@ def cmd_baseline(a):
     head = _git("rev-parse", "--short", "HEAD").stdout.strip()
     _fresh_tree()
     if run.v2:
+        # `round` commits with `git add -A`, so an untracked frozen file would enter a candidate commit and a
+        # revert would delete it from the tree.
+        loose = _git("ls-files", "--others", "--exclude-standard", "--", *cfg["frozen"]).stdout.split() \
+            if cfg.get("frozen") else []
+        if loose:
+            sys.exit(f"baseline: frozen path is untracked and not ignored: {', '.join(loose)}; commit it or add it "
+                     f"to .gitignore, or a reverted round would delete it")
         if os.path.exists(PREFLIGHT):
             os.remove(PREFLIGHT)
         locked = _lock_paths(cfg)
