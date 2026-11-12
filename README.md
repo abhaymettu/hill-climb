@@ -82,22 +82,29 @@ hill-climb the landing page look against stripe.com, 10 rounds
 
 ## How it works
 
-The agent drives three commands of `scripts/hc.py`:
+The agent drives four commands of `scripts/hc.py`:
 
 ```sh
 hc.py setup --cmd 'python bench.py' --regex 'seconds=([0-9.]+)' --direction min \
             --gate 'pytest -q' --frozen bench.py --budget 20 --patience 5
 hc.py baseline                       # gates and score on the untouched tree, logged as round 0
+hc.py preflight broken               # with the code broken on purpose: the score must get worse
+hc.py preflight cheat                # with a frozen file edited on purpose: the edit must be caught
 hc.py round "precompile the regex"   # commit, gates, measure, keep or revert, log, print NEXT or STOP
 ```
 
 `setup` freezes the score, gates and stop rules before round one, so every round is measured the same way.
+Frozen files are locked by content hash, git-ignored eval sets and the judge prompt included, and a round that
+touches them is refused. The pre-flight proves the score can see a broken version and catches a cheat before
+any round counts.
 `baseline` prints the noise band and, if it is too wide for the gains you are after, how many runs would
 resolve them. Each `round` reverts a change that breaks a gate, then compares repeated measurements against the
 current best and calls a WIN only when the gain clears both the minimum you set and two standard errors. A big win is not a stop rule.
 
 Taste work (a page's look, copy) swaps the number for three fresh judges who see both versions under neutral
-labels with their own coin flips. The full method is in [SKILL.md](skills/hill-climb/SKILL.md); two complete
+labels with their own coin flips. The judges' replies are saved and the script counts the votes, so a verdict
+is never typed by hand. An optional holdout, scored only by the script, stops a run whose visible score climbs
+while the holdout stays flat. The full method is in [SKILL.md](skills/hill-climb/SKILL.md); two complete
 runs are in [`examples/`](examples).
 
 ## Reproduce the benchmark

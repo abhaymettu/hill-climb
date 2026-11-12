@@ -30,7 +30,7 @@ Pick the line that matches your harness, run it, then verify.
 Verify:
 
 ```sh
-python3 ~/.claude/skills/hill-climb/scripts/hc.py -h     # prints the nine subcommands
+python3 ~/.claude/skills/hill-climb/scripts/hc.py -h     # prints the twelve subcommands
 ```
 
 Requirements: `git` and Python 3.8 or newer. The helper uses the standard library only. Judge mode also needs
@@ -44,13 +44,19 @@ When the user asks to hill-climb, optimize over rounds, or "keep improving X unt
 
 1. Agree the score with the user in one sentence if they did not give one.
 2. In the target repo: `hc.py setup --cmd '<score command>' --regex '<metric regex>' --direction min|max
-   --gate '<test command>' --frozen <path>`, fill in `.hillclimb/HILLCLIMB.md`, then `hc.py baseline`.
+   --gate '<test command>' --frozen <path>`, fill in `.hillclimb/HILLCLIMB.md`, then `hc.py baseline`, then
+   the pre-flight (`hc.py preflight broken`, `hc.py preflight cheat`, SKILL.md section 2).
 3. Each round: make one change, then `hc.py round "<the change>"`. It commits, gates, measures, keeps or
    reverts, logs, and prints `NEXT` or `STOP`.
 4. Keep going until it prints `STOP`. A big win is not a stop rule. Then report best vs baseline.
 
 `examples/` holds two complete runs (a 370x speed-up scored by a benchmark, and a page polished by blind
 judges) with their setup files and logs. Read one if you want to see what a finished run looks like.
+
+## Tests
+
+`python3 -m unittest discover -s tests -v` runs the behaviour tests of `hc.py` in throwaway git repos (about
+20 seconds, standard library only). `HC=/path/to/hc.py` points them at another copy, such as an installed one.
 
 ## The benchmark
 

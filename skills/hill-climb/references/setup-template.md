@@ -24,16 +24,23 @@ Judge:
 - Capture command: `<command>` writing to `.hillclimb/rounds/rNN/`
 - Reference (optional): `<path or URL>`
 - Rubric, 3 to 5 axes, fixed: 1. ... 2. ... 3. ...
-- Judges per round: 3 fresh contexts, majority wins, ties keep the best.
+- Judges per round: 3 fresh contexts, replies saved and counted by `hc.py tally`, majority wins, ties keep the best.
 
 ## Gates (veto, checked before the score)
 - `<test command>` passes
 - `<build or type check>` passes
 - `<guard metric>` no worse than baseline by more than <x>
 
+## Holdout and pre-flight
+- Holdout (fixed eval sets and judged products): `<path, about 20% of the real set, never opened>` scored by
+  `<holdout command>`; or none, because ...
+- Pre-flight: the deliberate break was ... (scored worse / panel preferred the baseline); the cheat tried was
+  ... (refused).
+
 ## Budget and stop rule
 - At most <N> rounds or <T> wall-clock, whichever comes first.
-- Stop after <P> rounds in a row without a win, or when <target value> is reached.
+- Stop after <P> rounds in a row without a win, when <target value> is reached, or when the holdout stays
+  flat while the visible score climbs.
 - One heavy job at a time.
 
 ## Ideas queue (optional, ordered)
