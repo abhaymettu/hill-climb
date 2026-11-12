@@ -252,3 +252,8 @@ report it, do not hide it.
 - 2026-11-12, from the review: check what you can before the commit. A panel checked after `round` committed
   reset an honest round's work over a missing reply file. And a copied blind folder passed until flip.json was
   tied to its own folder. The script can prove a record is consistent, never who wrote a judge reply.
+- 2026-11-12, from a 28-round page climb: a judge told to read stills and change nothing cannot save its own
+  reply, so the orchestrator retyped about 30 replies by hand to give `tally` its files. That is slow and it is
+  the one place a reply can drift. Write each judge's prompt as a file at flip time and have the harness, not
+  the orchestrator, save the judge's final message as `judge-N.txt`. Also: on stills, votes follow where a
+  screen cut falls and whether the last still repeats the one before, so capture views that cut no line.
