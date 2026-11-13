@@ -58,8 +58,10 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
    repeat; `--expect-line '<exact line>'` adds an output guard such as a checksum). It writes the frozen config to
    `.hillclimb/config.json`, creates `.hillclimb/HILLCLIMB.md` (from `references/setup-template.md`),
    `.hillclimb/results.tsv` and `.hillclimb/rounds/`, and adds `.hillclimb/` to `.git/info/exclude` so the log
-   survives every revert. Judge runs: `hc.py setup --judges 3 --frozen <views or capture script>` (the
-   capture command as `--cmd` is optional). For a fixed eval set or a judged product, add
+   survives every revert. Judge runs: `hc.py setup --judges 3 --judge-cmd '<headless model call>' --frozen
+   <views or capture script>` (the capture command as `--cmd` is optional). With `--judge-cmd` (for example
+   `'claude -p --model sonnet --allowedTools Read'`), hc.py calls the judges and saves their replies itself, so
+   the climbing agent never writes one. Leave it out only when judges can run as subagents and nothing else. For a fixed eval set or a judged product, add
    `--holdout-cmd '<cmd>'`, see "Climbing on a fixed eval set".
 3. Fill in HILLCLIMB.md: the target and its editable surface, what is frozen (tests, eval harness, the
    benchmark itself), the score, the exact gate commands, the budget, the stop rule. For judge mode, also
@@ -73,8 +75,9 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
 5. **Pre-flight, before round 1.** Prove the measure can see a difference and catches a cheat; `round` refuses
    until both pass. Break the work on purpose (a wrong answer, a broken layout, a truncated output) and run
    `hc.py preflight broken`: a scalar run must score worse or fail a gate; a judge run must have the panel
-   prefer the baseline (capture the broken version into `.hillclimb/rounds/preflight/cand/`, `flip` it against
-   `r00` into `rounds/preflight/blind`, judge, `tally`, then `preflight broken --panel <panel.json>`). Restore
+   prefer the baseline (capture the broken version into `.hillclimb/rounds/preflight/cand/`; with
+   `--judge-cmd`, `preflight broken` flips and judges it itself; without it, `flip` it against `r00` into
+   `rounds/preflight/blind`, judge, `tally`, then `preflight broken --panel <panel.json>`). Restore
    it. Then change one frozen file (add a line to the eval set) and run `hc.py preflight cheat`; it must
    report the change. Restore that too. If a check fails, the capture, views, prompt or score is broken: fix
    the setup and re-run `baseline`. Only when there is truly nothing to break: `hc.py preflight skip --why
@@ -104,8 +107,20 @@ A run set up before locks existed has none: hc.py prints one `legacy run` line a
    anything else, and prints `NEXT: ...` or `STOP: ...`. Do what that line says.
    - A deletion that ties: `hc.py round "<change>" --simpler` keeps it at equal score.
    - A trivial slip (a typo, a missing import) that fails a gate costs that round; fix it as the next round.
-   - Judge mode: run the panel first (capture into the folder the NEXT line names, `flip`, judges, save each
-     reply as `blind/judge-N.txt`, `hc.py tally <blind dir>`, see `references/judging.md`), then
+   - Judge mode with `--judge-cmd`: capture into the folder the NEXT line names, then `hc.py round
+     "<change>"`. If the setup gave a capture `--cmd`, skip the capture: hc.py runs `<cmd> <folder>` itself
+     at baseline and every round, and refuses a round folder someone else made. The candidate must show the
+     same views (file names) as the best, and the best's captures are locked by hash once kept. After the
+     gates pass, hc.py flips the candidate against the best's captures, runs the judge
+     command once per judge (the frozen prompt on stdin, the judge's blind folder as cwd and `$HC_JUDGE_DIR`),
+     saves each stdout unedited as `blind/judge-N.txt` with a receipt in `blind/judges.json`, and counts the
+     votes. `--panel` and `--verdict` are refused, and so is a round whose `blind/` folder already exists: a
+     reply hc.py did not write is a planted one. If a judge fails (a crash, a timeout, no `VERDICT:` line),
+     nothing is logged, the commit is undone with the change left in the tree, and the replies are set aside
+     as `blind.failed-N` (the log row of the round that finally runs says `attempt N`); run the same round
+     again. No reply reaches the disk until every judge has answered.
+   - Judge mode without `--judge-cmd`: run the panel first (capture into the folder the NEXT line names, `flip`,
+     judges, save each reply as `blind/judge-N.txt`, `hc.py tally <blind dir>`, see `references/judging.md`), then
      `hc.py round "<change>" --panel .hillclimb/rounds/rNN/blind/panel.json`. The script counts the votes; a
      typed `--verdict` is refused, and so is a panel flipped for another round or a reply edited after the
      tally (nothing is committed, so fix it and run the same round again). The script can check that the
@@ -161,7 +176,8 @@ kept round fits that set a little. Twenty rounds of small wins on 400 examples c
   `--holdout-cmd '<the score command on the holdout>'`. Never open those files again. hc.py runs it at
   baseline, after every 5th win and at the end. If the visible score climbed and the holdout did not, it
   prints `STOP: overfitting`: stop and report both numbers. Judge runs: the holdout command captures held-out
-  views; hc.py flips best against baseline on them and waits for a panel (`hc.py holdout --panel`).
+  views; hc.py flips best against baseline on them and, with `--judge-cmd`, judges them on the spot;
+  without it, it waits for a panel (`hc.py holdout --panel`).
 - In the report, call the final number what it is: the score on the set you climbed on, which overstates
   performance on new data, and give the holdout number beside it.
 
@@ -262,3 +278,6 @@ report it, do not hide it.
   out dir to `.hillclimb/rounds/r00` in the capture script. Also: a session subagent budget (12) caps judge panels at
   about 3 rounds plus pre-flight; plan the final best-vs-baseline panel into that budget up front.
 
+- 2026-11-13: the agent that climbs should never hold the pen for its own grades. With `--judge-cmd` the judge
+  command lives in the locked config and `round` writes every reply from that command's stdout, so a reply in
+  the blind folder before the judges ran can only be planted, and is refused (`test/judge-script.sh`).

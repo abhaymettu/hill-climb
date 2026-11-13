@@ -2,7 +2,8 @@
 """hc.py: small, dependency-free helpers for a hill-climb run.
 
   hc.py setup --cmd CMD --direction min|max [opts]   init, plus the run's frozen config for `round`
-  hc.py setup --judges N [--cmd CAPTURE] [opts]       the same for a judge run (blind pairwise panel)
+  hc.py setup --judges N [--judge-cmd CMD] [opts]     the same for a judge run (blind pairwise panel); with
+                                         --judge-cmd, round calls the judges and writes their replies itself
   hc.py baseline                         gates and score on the untouched tree, content locks, logged as round 0
   hc.py preflight broken|cheat|skip      prove the measure sees a broken version and catches a cheat, before round 1
   hc.py round "CHANGE" [--panel PATH]    one whole round: commit, locks, gates, score, keep or revert, log, next step
@@ -33,6 +34,7 @@ import statistics
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 COLUMNS = ["round", "time", "commit", "change", "score", "gates", "verdict", "notes"]
@@ -50,6 +52,7 @@ BEST = os.path.join(ROUNDS, "best.json")
 R00 = os.path.join(ROUNDS, "r00.json")
 LOG = os.path.join(HC, "results.tsv")
 HOLDOUT_DIR = os.path.join(ROUNDS, "holdout")
+RECEIPT = "judges.json"
 
 FORMAT_VERSION = 2
 ALWAYS_LOCKED = (CONFIG, PROMPT)
@@ -59,6 +62,8 @@ VERDICT_LINE = re.compile(r"^\s*\**\s*VERDICT\s*\**\s*:\s*\**\s*(A|B|TIE)\s*\**\
 
 LEGACY_WARNING = ("hc.py: legacy run (set up before content locks and the holdout); using the old checks. "
                   "Restart with setup --force to get them.")
+JUDGE_CMD_REFUSAL = ("{what}: this run's judges are called by hc.py (setup --judge-cmd), so a panel or verdict "
+                     "made outside it is not accepted; {how}")
 VERDICT_REFUSAL = ("round: --verdict is not accepted; save each judge's reply as rounds/rNN/blind/judge-J.txt, "
                    "run hc.py tally, then round --panel (a judge run is set up with setup --judges N)")
 PREFLIGHT_REFUSAL = ("round: pre-flight not done; run hc.py preflight broken and hc.py preflight cheat "
@@ -109,6 +114,7 @@ class Run:
         self.v2 = "version" in self.cfg
         self.judge = bool(self.cfg.get("judges"))
         self.holdout = self.cfg.get("holdout_cmd") if self.v2 else None
+        self.judge_cmd = self.cfg.get("judge_cmd") if self.v2 else None
         if not self.v2:
             print(LEGACY_WARNING, file=sys.stderr)
 
@@ -289,6 +295,8 @@ def _tally(d):
         rows = _load(flip_path)
     except ValueError:
         raise PanelError(f"{flip_path} is not valid JSON")
+    receipt = _load(os.path.join(d, RECEIPT)) if os.path.isfile(os.path.join(d, RECEIPT)) else None
+    saved = {r["judge"]: r["reply_sha256"] for r in receipt["judges"]} if receipt else {}
     votes = []
     for row in rows:
         j = row["judge"]
@@ -299,14 +307,18 @@ def _tally(d):
             said = _reply_verdict(f.read())
         if not said:
             raise PanelError(f"judge {j}: no 'VERDICT: A|B|TIE' line in {reply}")
-        votes.append({"judge": j, "reply": f"judge-{j}.txt", "reply_sha256": _sha_file(reply), "said": said,
+        sha = _sha_file(reply)
+        if receipt and saved.get(j) != sha:
+            raise PanelError(f"judge {j}: {reply} is not the reply hc.py saved from the judge command")
+        votes.append({"judge": j, "reply": f"judge-{j}.txt", "reply_sha256": sha, "said": said,
                       "prefers": "tie" if said == "TIE" else row[said]})
     n = len(votes)
     count = {side: sum(v["prefers"] == side for v in votes) for side in ("candidate", "best", "tie")}
     verdict = "WIN" if count["candidate"] > n / 2 else "LOSS" if count["best"] > n / 2 else "NOISE"
     return {"dir": d, "judges": n, "votes": votes, "candidate": count["candidate"], "best": count["best"],
             "tie": count["tie"], "verdict": verdict, "score": f"{count['candidate']}/{n} cand",
-            "flip_sha256": _sha_file(flip_path)}
+            "flip_sha256": _sha_file(flip_path),
+            "replies_written_by": receipt["caller"] if receipt else "the agent (hc.py cannot check who wrote them)"}
 
 
 def cmd_tally(a):
@@ -337,6 +349,84 @@ def _verify_panel(path, judges=None):
     if judges and fresh["judges"] != judges:
         raise PanelError(f"the panel has {fresh['judges']} judges; this run uses {judges}")
     return fresh
+
+
+def _judge_prompt(row):
+    jdir = os.path.abspath(row["dir"])
+    with open(PROMPT, encoding="utf-8-sig") as f:
+        text = f.read().rstrip("\n")
+    sides = "\n".join(f"Version {s} is in {os.path.join(jdir, s)}: {', '.join(sorted(os.listdir(os.path.join(jdir, s))))}"
+                      for s in ("A", "B"))
+    return f"{text}\n\n{sides}\nDo not read any other file.\n"
+
+
+def _call_judge(cmd, timeout, blind, row):
+    """Run the judge command for one judge. Returns (receipt, stdout, error); the caller saves stdout unedited."""
+    j = row["judge"]
+    prompt = _judge_prompt(row)
+    prompt_path = os.path.abspath(os.path.join(blind, f"judge-{j}.prompt.md"))
+    with open(prompt_path, "w") as f:
+        f.write(prompt)
+    env = dict(os.environ, HC_JUDGE=str(j), HC_JUDGE_DIR=os.path.abspath(row["dir"]), HC_JUDGE_PROMPT=prompt_path)
+    t0 = time.time()
+    try:
+        p = subprocess.run(cmd, shell=True, input=prompt.encode(), capture_output=True, cwd=row["dir"], env=env,
+                           timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None, None, f"judge {j}: timed out after {timeout:g}s"
+    if p.returncode != 0:
+        tail = (p.stderr or p.stdout).decode(errors="replace").strip()[-300:]
+        return None, None, f"judge {j}: exit {p.returncode}: {tail}"
+    if not _reply_verdict(p.stdout.decode("utf-8-sig", errors="replace")):
+        return None, None, f"judge {j}: no 'VERDICT: A|B|TIE' line in its reply"
+    return {"judge": j, "exit": 0, "seconds": round(time.time() - t0, 2),
+            "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+            "reply_sha256": hashlib.sha256(p.stdout).hexdigest()}, p.stdout, None
+
+
+def _set_aside(path):
+    k = 1
+    while os.path.exists(f"{path}.failed-{k}"):
+        k += 1
+    os.rename(path, f"{path}.failed-{k}")
+    return f"{path}.failed-{k}"
+
+
+def _judge_panel(run, best_dir, cand_dir, blind, caller, attempt=1):
+    """Flip, call every judge, save the replies and the receipt, tally. The replies exist only because this
+    function wrote them; a blind folder that is already there was not made by it and is refused."""
+    cfg = run.cfg
+    if os.path.exists(blind):
+        raise PanelError(f"{blind} exists before hc.py called any judge, so a reply in it would be planted; "
+                         f"hc.py writes the judge replies itself. Delete that folder")
+    if not os.path.isfile(PROMPT):
+        raise PanelError(f"{PROMPT} is missing; hc.py sends it to every judge")
+    rows = _flip(cfg["judges"], best_dir, cand_dir, blind)
+    with ThreadPoolExecutor(max_workers=len(rows)) as pool:
+        results = list(pool.map(lambda row: _call_judge(cfg["judge_cmd"], cfg["timeout"], blind, row), rows))
+    errors = [err for _, _, err in results if err]
+    if errors:
+        raise PanelError(f"{'; '.join(errors)} (set aside in {_set_aside(blind)})")
+    # No reply touches the disk until every judge has answered, so nobody can watch a panel go one way and stop it.
+    for receipt, reply, _ in results:
+        with open(os.path.join(blind, f"judge-{receipt['judge']}.txt"), "wb") as f:
+            f.write(reply)
+    _save(os.path.join(blind, RECEIPT), {"caller": caller, "judge_cmd": cfg["judge_cmd"], "attempt": attempt,
+                                         "prompt_sha256": _sha_file(PROMPT),
+                                         "judges": [receipt for receipt, _, _ in results]})
+    panel = _tally(blind)
+    panel["attempt"] = attempt
+    _save(os.path.join(blind, "panel.json"), panel)
+    return panel
+
+
+def _captures(folder):
+    names = os.listdir(folder) if os.path.isdir(folder) else []
+    return sorted(n for n in names if any(n.endswith(e) for e in FLIP_EXT.split(",")))
+
+
+def _capture_hashes(folder):
+    return {n: _sha_file(os.path.join(folder, n)) for n in _captures(folder)}
 
 
 def _read(path):
@@ -566,11 +656,13 @@ def cmd_setup(a):
         _refuse(2, "setup: --cmd and --direction are required (or --judges N for a judge run)")
     if a.judges is not None and a.judges < 1:
         _refuse(2, "setup: --judges must be 1 or more")
+    if a.judge_cmd and not a.judges:
+        _refuse(2, "setup: --judge-cmd needs --judges N")
     cmd_init(argparse.Namespace(dir="."))
     cfg = {"cmd": a.cmd, "regex": a.regex, "direction": a.direction, "min_delta": a.min_delta, "runs": a.runs,
            "warmup": a.warmup, "expect": a.expect, "expect_line": a.expect_line, "gates": a.gate,
            "frozen": a.frozen, "budget": a.budget, "patience": a.patience, "timeout": a.timeout,
-           "version": FORMAT_VERSION, "judges": a.judges, "holdout_cmd": a.holdout_cmd}
+           "version": FORMAT_VERSION, "judges": a.judges, "judge_cmd": a.judge_cmd, "holdout_cmd": a.holdout_cmd}
     if os.path.exists(CONFIG) and not a.force:
         sys.exit("setup: .hillclimb/config.json exists; the score never changes mid-run (use --force to restart "
                  "the run at a new round 0, and note why under Restarts in HILLCLIMB.md)")
@@ -578,6 +670,9 @@ def cmd_setup(a):
     print(json.dumps(cfg, indent=1))
     if not a.holdout_cmd and (a.judges or a.frozen):
         print("NOTE: no --holdout-cmd; the final number will be the score on the set you climbed on.")
+    if a.judges and not a.judge_cmd:
+        print("NOTE: no --judge-cmd; you will save the judges' replies yourself, and hc.py cannot check who wrote "
+              "them. Give --judge-cmd when a headless model call is available.")
     print("NEXT: fill in .hillclimb/HILLCLIMB.md, commit any pending work, then run: hc.py baseline")
 
 
@@ -590,7 +685,11 @@ def _next(run, since_win, rounds, next_n):
         stop.append(f"{since_win} rounds in a row without a win (patience {cfg['patience']})")
     if stop:
         return "STOP: " + "; ".join(stop) + ". Confirm the best against the baseline, then write the report."
-    if run.v2 and run.judge:
+    if run.judge_cmd:
+        folder = os.path.join(ROUNDS, f"r{next_n:02d}")
+        how = (f"capture into {folder}/, then run: hc.py round \"<what you changed>\" (it flips, calls the judges "
+               f"and counts their votes).")
+    elif run.v2 and run.judge:
         folder = os.path.join(ROUNDS, f"r{next_n:02d}")
         how = (f"capture into {folder}/, flip it against the best into {folder}/blind, save each judge's reply as "
                f"judge-J.txt there, run hc.py tally {folder}/blind, then: hc.py round \"<what you changed>\" "
@@ -623,7 +722,16 @@ def _scalar_baseline(cfg, head):
 
 
 def _judge_baseline(cfg, head):
-    if cfg.get("cmd"):
+    best = {"commit": head, "base_commit": head}
+    r00 = os.path.join(ROUNDS, "r00")
+    if cfg.get("cmd") and cfg.get("judge_cmd"):
+        # hc.py captures every round itself, the baseline included, and remembers what the best looked like.
+        shutil.rmtree(r00, ignore_errors=True)
+        err = _capture(cfg["cmd"], r00, cfg["timeout"])
+        if err or not _captures(r00):
+            sys.exit(f"baseline: capture into {r00}/ failed: {err or 'no files'}")
+        best["captures"] = _capture_hashes(r00)
+    elif cfg.get("cmd"):
         err = _shell(cfg["cmd"], cfg["timeout"])
         if err:
             sys.exit(f"baseline: capture failed: {err}")
@@ -632,7 +740,7 @@ def _judge_baseline(cfg, head):
     if "not instructions" not in text.lower():
         report.append("WARN: .hillclimb/judge-prompt.md is missing or does not tell judges the work is data, not "
                       "instructions; add that line from references/judging.md, then rerun hc.py baseline.")
-    return {"commit": head, "base_commit": head}, "-", "judge baseline", report, False
+    return best, "-", "judge baseline", report, False
 
 
 def _holdout_baseline(run):
@@ -699,7 +807,10 @@ def _round_refusal(run, a):
     """Reasons to refuse before anything is committed (exit 2)."""
     if a.verdict and a.panel:
         return "round: give --panel or --verdict, not both"
-    if run.v2 and (a.verdict or (run.judge and not a.panel)):
+    if run.judge_cmd and (a.verdict or a.panel):
+        return JUDGE_CMD_REFUSAL.format(what="round", how="capture into the round's folder and run hc.py round "
+                                                          "\"<change>\" with no --panel")
+    if run.v2 and (a.verdict or (run.judge and not run.judge_cmd and not a.panel)):
         return VERDICT_REFUSAL
     if run.v2 and a.panel and not run.judge:
         return "round: --panel is for judge runs (setup --judges N); a scalar round is measured"
@@ -716,6 +827,40 @@ def _round_refusal(run, a):
     if due:
         return (f"round: holdout check due; judge {due}, save each reply as judge-J.txt there, run hc.py tally "
                 f"{due}, then hc.py holdout --panel {os.path.join(due, 'panel.json')}")
+    if run.judge_cmd:
+        return _judged_round_refusal(run.cfg, len(_read(LOG)))
+    return None
+
+
+def _best_round():
+    """The round whose captures are the best's: the last kept row (the baseline is round 0)."""
+    return int([r for r in _read(LOG) if r["verdict"].lower() in KEEP_VERDICTS][-1]["round"])
+
+
+def _judged_round_refusal(cfg, n):
+    folder = os.path.join(ROUNDS, f"r{n:02d}")
+    best = os.path.join(ROUNDS, f"r{_best_round():02d}")
+    kept = _load(BEST).get("captures")
+    if not os.path.isfile(PROMPT):
+        return f"round: {PROMPT} is missing; hc.py sends it to every judge"
+    if not _captures(best):
+        return f"round: the best's captures are missing from {best}/; hc.py flips the candidate against them"
+    if kept and _capture_hashes(best) != kept:
+        return (f"round: the best's captures in {best}/ changed since that round was kept; restore them or restart "
+                f"with setup --force")
+    if cfg.get("cmd"):
+        if os.path.exists(folder):
+            return (f"round: {folder}/ exists, but hc.py captures the candidate itself with the setup --cmd; delete "
+                    f"it and run the same round again; nothing was committed")
+    elif not _captures(folder):
+        return f"round: capture the candidate into {folder}/ first; nothing was committed"
+    elif _captures(folder) != _captures(best):
+        return (f"round: {folder}/ holds {', '.join(_captures(folder))} but the best has "
+                f"{', '.join(_captures(best))}; capture the same views, nothing else; nothing was committed")
+    if os.path.exists(os.path.join(folder, "blind")):
+        return (f"round: {folder}/blind exists before hc.py called any judge, so a reply in it would be planted; "
+                f"hc.py writes the judge replies itself. Delete {folder}/blind and run the same round again; "
+                f"nothing was committed")
     return None
 
 
@@ -755,12 +900,41 @@ def _score_round(run, a, best, n):
     elif a.panel:
         panel = a.tallied
         result = (panel["verdict"], panel["score"], f"panel {panel['score']}", "pass")
+    elif run.judge_cmd:
+        result = _judged(run, best, n)
     elif a.verdict:
         result = (a.verdict.upper(), a.score or "", a.notes or "", "pass")
     else:
         result = _measured(cfg, n)
     _require_locks(run)
     return result
+
+
+def _judged(run, best, n):
+    """Capture (when the run has a capture command), flip against the best's captures, call the judges, tally."""
+    cfg = run.cfg
+    folder, best_dir = os.path.join(ROUNDS, f"r{n:02d}"), os.path.join(ROUNDS, f"r{_best_round():02d}")
+    if "captures" not in best:
+        # The agent captured the baseline after `baseline` ran; from here on it cannot change unnoticed.
+        best["captures"] = _capture_hashes(best_dir)
+        _save(BEST, best)
+    if cfg.get("cmd"):
+        err = _capture(cfg["cmd"], folder, cfg["timeout"])
+        if err:
+            return "LOSS", "", f"capture failed: {err}", "fail"
+        if _captures(folder) != sorted(best["captures"]):
+            return "LOSS", "", f"capture made {', '.join(_captures(folder)) or 'no files'}, not the best's views", "fail"
+    # Failed attempts are set aside, never deleted, so the log can say how many panels this round took.
+    attempt = 1 + len([f for f in os.listdir(ROUNDS) if f.startswith(f"r{n:02d}.failed-")]) + \
+        len([f for f in os.listdir(folder) if f.startswith("blind.failed-")])
+    try:
+        panel = _judge_panel(run, best_dir, folder, os.path.join(folder, "blind"), f"hc.py round r{n:02d}", attempt)
+    except PanelError as e:
+        if cfg.get("cmd"):  # hc.py captures again on the rerun, so the whole folder goes aside
+            raise PanelError(f"{e}; {folder} set aside as {_set_aside(folder)}")
+        raise
+    tries = f", attempt {panel['attempt']}" if panel["attempt"] > 1 else ""
+    return panel["verdict"], panel["score"], f"panel {panel['score']}, judges called by hc.py{tries}", "pass"
 
 
 def _holdout_check(run, n, wins, kind):
@@ -776,6 +950,15 @@ def _holdout_check(run, n, wins, kind):
         if err:
             return f"HOLDOUT: capture failed, no check taken: {err}"
         blind = os.path.join(folder, "blind")
+        if run.judge_cmd:
+            try:
+                panel = _judge_panel(run, os.path.join(HOLDOUT_DIR, "r00"), os.path.join(folder, "cand"), blind,
+                                     caller=f"hc.py holdout r{n:02d} ({kind})")
+            except PanelError as e:
+                return f"HOLDOUT: no check taken: {e}; run hc.py holdout at the best to take it ({_set_aside(folder)})"
+            _apply_holdout_panel(entry, panel)
+            _save(HOLDOUT, _holdout_log() + [entry])
+            return None
         _flip(cfg["judges"], os.path.join(HOLDOUT_DIR, "r00"), os.path.join(folder, "cand"), blind)
         entry["pending"] = blind
         print(f"HOLDOUT ({kind}): due. Run {cfg['judges']} fresh judges on {blind}/judge-J, save each full reply as "
@@ -804,6 +987,7 @@ def cmd_round(a):
         _refuse(2, early)
     best = _load(BEST)
     n = len(_read(LOG))
+    start = _git("rev-parse", "HEAD").stdout.strip()
     _fresh_tree()
     _git("add", "-A")
     if _git("diff", "--cached", "--quiet").returncode != 0:
@@ -818,6 +1002,12 @@ def cmd_round(a):
         _reset_to(best["commit"])
         print(r)
         sys.exit(3)
+    except PanelError as e:
+        # A judge that failed (a timeout, a crash, no verdict line) says nothing about the work: undo the commit,
+        # keep the change in the tree, log nothing, so the same round can run again.
+        _git("reset", "-q", "--soft", start)
+        _refuse(2, f"round: the judges did not all reply: {e}. Nothing was logged and the round's commit was "
+                   f"undone; the change is still in the tree, so run the same round again")
     if verdict == "NOISE" and a.simpler and not a.verdict:
         verdict, notes = "KEEP", notes + ", simpler"
     if a.notes and not a.verdict:
@@ -826,9 +1016,11 @@ def cmd_round(a):
     _log_row(round=n, commit=head, change=a.change, score=score, gates=gates,
              verdict="keep" if keep else "revert", notes=f"{verdict}: {notes[:200]}")
     if keep:
-        measured = not (a.verdict or a.panel)
+        measured = not (a.verdict or a.panel or run.judge_cmd)
         new = _load(os.path.join(ROUNDS, f"r{n:02d}.json")) if measured else dict(best)
         new["commit"], new["base_commit"] = head, best["base_commit"]
+        if run.judge_cmd:
+            new["captures"] = _capture_hashes(os.path.join(ROUNDS, f"r{n:02d}"))
         _save(BEST, new)
     else:
         _reset_to(best["commit"])
@@ -851,6 +1043,12 @@ def _at_best(best):
     return _git("rev-parse", "HEAD").stdout.strip() == _git("rev-parse", best["commit"]).stdout.strip()
 
 
+def _apply_holdout_panel(entry, panel):
+    entry.update(score=panel["score"], holdout_verdict=panel["verdict"],
+                 overfit=entry["wins"] > 0 and panel["verdict"] != "WIN")
+    print(f"HOLDOUT ({entry['kind']}): panel {panel['score']} -> {panel['verdict']}")
+
+
 def _record_holdout_panel(run, path):
     log = _holdout_log()
     due = log[-1].get("pending") if log else None
@@ -865,10 +1063,8 @@ def _record_holdout_panel(run, path):
         sys.exit(f"holdout: {e}")
     last = log[-1]
     last.pop("pending")
-    last.update(score=panel["score"], holdout_verdict=panel["verdict"],
-                overfit=last["wins"] > 0 and panel["verdict"] != "WIN")
+    _apply_holdout_panel(last, panel)
     _save(HOLDOUT, log)
-    print(f"HOLDOUT ({last['kind']}): panel {panel['score']} -> {panel['verdict']}")
     after = "the run had stopped; write the report." if last["kind"] == "final" else "continue with the next round."
     print(_overfit_stop() or f"NEXT: holdout recorded; {after}")
 
@@ -877,6 +1073,8 @@ def cmd_holdout(a):
     run = Run()
     if not run.holdout:
         _refuse(2, "holdout: this run has no --holdout-cmd")
+    if a.panel and run.judge_cmd:
+        _refuse(2, JUDGE_CMD_REFUSAL.format(what="holdout", how="hc.py judges each holdout check when it is taken"))
     if a.panel:
         _record_holdout_panel(run, a.panel)
         return
@@ -895,6 +1093,8 @@ def cmd_holdout(a):
 
 def _preflight_broken(run, panel):
     cfg = run.cfg
+    if run.judge_cmd:
+        return _preflight_broken_judged(run, panel)
     if run.judge:
         root = os.path.normpath(os.path.join(ROUNDS, "preflight")) + os.sep
         if not panel or not _rel(panel).startswith(root) or os.path.basename(panel) != "panel.json":
@@ -916,6 +1116,27 @@ def _preflight_broken(run, panel):
         return {"pass": True, "why": f"measurement failed: {res['errors'][:1]}"}
     c = _compare(_load(R00), res, cfg["direction"], cfg["min_delta"])
     return {"pass": c["verdict"] == "LOSS", "why": f"gain {c['gain_rel']:+.1%}, {c['verdict']}"}
+
+
+def _preflight_broken_judged(run, panel):
+    if panel:
+        _refuse(2, JUDGE_CMD_REFUSAL.format(what="preflight broken", how="capture the broken version into "
+                                                                     ".hillclimb/rounds/preflight/cand/ and run "
+                                                                     "hc.py preflight broken with no --panel"))
+    root = os.path.join(ROUNDS, "preflight")
+    best, cand, blind = os.path.join(ROUNDS, "r00"), os.path.join(root, "cand"), os.path.join(root, "blind")
+    for folder, what in ((best, "the baseline"), (cand, "the broken version")):
+        if not _captures(folder):
+            _refuse(2, f"preflight broken: capture {what} into {folder}/ first")
+    # The pre-flight may be retried; an earlier blind folder is replaced, never read.
+    if os.path.exists(blind):
+        _set_aside(blind)
+    try:
+        p = _judge_panel(run, best, cand, blind, caller="hc.py preflight broken")
+    except PanelError as e:
+        sys.exit(f"preflight: {e}")
+    return {"pass": p["verdict"] == "LOSS", "why": f"panel {p['score']}, {p['verdict']}, judges called by hc.py",
+            "panel": os.path.join(blind, "panel.json")}
 
 
 def _preflight_cheat(run):
@@ -961,6 +1182,9 @@ def main():
     s.add_argument("--regex", help="metric = group 1 of the last match; omit to score the command's wall time")
     s.add_argument("--direction", choices=["min", "max"])
     s.add_argument("--judges", type=int, help="a judge run: rounds are decided by a blind panel of N judges")
+    s.add_argument("--judge-cmd", help="judge runs: a shell command hc.py runs once per judge (prompt on stdin, cwd "
+                                       "and $HC_JUDGE_DIR the judge's blind folder); its stdout is saved as the "
+                                       "reply, so the climbing agent never writes one")
     s.add_argument("--holdout-cmd", help="score command over held-out data the builder never opens (judge runs: "
                                          "captures held-out views into the folder appended as its last argument)")
     s.add_argument("--min-delta", type=float, default=0.02)
@@ -981,7 +1205,8 @@ def main():
 
     s = sub.add_parser("round")
     s.add_argument("change", help="the one change this round made, in a few words")
-    s.add_argument("--panel", help="judge mode: this round's .hillclimb/rounds/rNN/blind/panel.json from hc.py tally")
+    s.add_argument("--panel", help="judge runs without --judge-cmd: this round's .hillclimb/rounds/rNN/blind/panel.json "
+                                   "from hc.py tally")
     s.add_argument("--verdict", choices=["WIN", "LOSS", "NOISE", "win", "loss", "noise"],
                    help="legacy runs only: the unblinded panel verdict, decided outside this script")
     s.add_argument("--score", help="legacy runs with --verdict: the vote, e.g. '3/3 cand'")

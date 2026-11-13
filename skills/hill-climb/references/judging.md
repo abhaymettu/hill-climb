@@ -6,6 +6,24 @@ current best. Absolute scores drift between calls; a side-by-side choice is much
 
 ## Per round
 
+With `setup --judge-cmd '<cmd>'`, steps 2 to 5 are done by `hc.py round` itself: capture the candidate (step 1)
+and run the round. hc.py flips, writes each judge's prompt to `blind/judge-N.prompt.md`, runs the command once
+per judge in parallel (prompt on stdin, cwd and `$HC_JUDGE_DIR` the judge's own folder, `$HC_JUDGE` its number,
+`$HC_JUDGE_PROMPT` the prompt file), saves its stdout unedited as `blind/judge-N.txt`, records who called which
+command in `blind/judges.json`, and tallies. The command is frozen in `config.json`, so it cannot change
+mid-run, and a reply in `blind/` that hc.py did not write refuses the round. `tally` later refuses a reply
+whose bytes differ from the receipt. A command that reads its prompt from stdin works as is, for example
+`claude -p --model sonnet --allowedTools Read` for stills. With a capture `--cmd` as well, hc.py runs step 1 too
+(`<cmd> <round folder>`), so the agent never touches what the judges compare.
+
+What this proves and what it does not: every reply came from the frozen command, run by hc.py, on views of the
+same names as the best's, against the best's captures as they were when kept. It does not prove what that
+command is on the machine (it runs with the caller's environment, so a shim earlier on `PATH` would be the
+judge), and a judge that disobeys "do not read any other file" can open `blind/flip.json` one folder up. The
+agent can still edit files under `.hillclimb/` after a round; this is a record, not a sandbox.
+
+Without `--judge-cmd`, do every step by hand:
+
 1. Capture the candidate's artifacts with the same capture step as every other round (same views, same
    order, same size, same data). Put them in `.hillclimb/rounds/rNN/`. The best's artifacts are already on
    disk from the round it won, so you never re-render the old version.
@@ -74,8 +92,9 @@ lost, and a pattern there (readability lost three rounds running) tells you what
   round-0 baseline with a fresh panel. If baseline wins or ties, report it plainly; the climb went sideways.
 - **Holdout views.** With `setup --holdout-cmd`, hc.py captures held-out views (never shown to the builder)
   at baseline, every 5 wins and at the end, flips best against baseline on them, and the next `round` waits
-  until you run a fresh panel on those copies, `tally` them and record it with `hc.py holdout --panel`. If
-  the panel does not prefer the best, the run stops as overfitting.
+  until you run a fresh panel on those copies, `tally` them and record it with `hc.py holdout --panel` (with
+  `--judge-cmd`, hc.py runs that panel itself when the check is taken). If the panel does not prefer the best,
+  the run stops as overfitting.
 - **Pre-flight.** Before round 1, one panel on the baseline against a deliberately broken version must prefer
   the baseline (`hc.py preflight broken --panel`). A panel that cannot see the views votes TIE every round.
 - **Gates before taste.** Run the hard gates (tests, contrast, layout shift, size budgets) first. A
@@ -101,4 +120,5 @@ than one judge, because the judges make the same mistakes. The method and data a
 ## Without subagents
 
 Any fresh model context works as a judge: a headless CLI call with the images attached, or an API call.
-What matters is that it has no memory of the work in progress and no hint of which side is new.
+What matters is that it has no memory of the work in progress and no hint of which side is new. Give that
+call to `setup --judge-cmd` and hc.py makes it, so no reply passes through the climbing agent's hands.

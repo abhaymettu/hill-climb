@@ -102,8 +102,9 @@ resolve them. Each `round` reverts a change that breaks a gate, then compares re
 current best and calls a WIN only when the gain clears both the minimum you set and two standard errors. A big win is not a stop rule.
 
 Taste work (a page's look, copy) swaps the number for three fresh judges who see both versions under neutral
-labels with their own coin flips. The judges' replies are saved and the script counts the votes, so a verdict
-is never typed by hand. An optional holdout, scored only by the script, stops a run whose visible score climbs
+labels with their own coin flips. Given a headless model call (`setup --judge-cmd`), the script calls the
+judges itself, saves each reply from the call's own output and counts the votes, so the climbing agent never
+writes a reply or types a verdict, and a reply planted in the round's folder fails the round. An optional holdout, scored only by the script, stops a run whose visible score climbs
 while the holdout stays flat. The full method is in [SKILL.md](skills/hill-climb/SKILL.md); two complete
 runs are in [`examples/`](examples).
 
