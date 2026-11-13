@@ -415,12 +415,18 @@ STUB_JUDGE = """\
 import os, re, sys
 sys.stdin.read()
 mode = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mode")).read().strip()
-if mode == "fail":
+if mode == "fail" or (mode == "fail2" and os.environ["HC_JUDGE"] == "2"):
     sys.exit("model call failed")
 d = os.environ["HC_JUDGE_DIR"]
 q = {s: int(re.search(r"quality (\\d+)", open(os.path.join(d, s, "view.txt")).read()).group(1)) for s in "AB"}
 said = "A" if q["A"] > q["B"] else "B" if q["B"] > q["A"] else "TIE"
 print("I looked at both." if mode == "silent" else f"AXES\\nA: {q['A']}\\nB: {q['B']}\\nVERDICT: {said}")
+"""
+
+WORK_CAPTURE = """\
+import os, re, sys
+value = re.search(r"VALUE = (\\d+)", open("work.py").read()).group(1)
+open(os.path.join(sys.argv[1], "view.txt"), "w").write(f"quality {value}\\n")
 """
 
 FLAT_CAPTURE = """\
@@ -439,6 +445,8 @@ class JudgeCommand(Case):
             f.write(STUB_JUDGE)
         with open(os.path.join(self.aux, "capture.py"), "w") as f:
             f.write(FLAT_CAPTURE)
+        with open(os.path.join(self.aux, "capture_work.py"), "w") as f:
+            f.write(WORK_CAPTURE)
         self.mode("ok")
 
     def tearDown(self):
@@ -455,7 +463,8 @@ class JudgeCommand(Case):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         repo.write(".hillclimb/judge-prompt.md", PROMPT)
         repo.baseline()
-        repo.write(".hillclimb/rounds/r00/view.txt", "quality 5\n")
+        if "--cmd" not in extra:
+            repo.write(".hillclimb/rounds/r00/view.txt", "quality 5\n")
         repo.skip_preflight()
         return repo
 
@@ -467,17 +476,68 @@ class JudgeCommand(Case):
         repo = self.judged_repo()
         commits = repo.commits()
         self.candidate(repo, 1, 7)
-        self.mode("fail")
+        self.mode("fail2")
         r = repo.hc("round", "value 11")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("model call failed", r.stderr)
         self.assertEqual((len(repo.rows()), repo.commits()), (1, commits))
         self.assertIn("VALUE = 11", repo.read("work.py"))
-        self.assertTrue(os.path.isdir(repo.path(".hillclimb/rounds/r01/blind.failed-1")))
+        failed = repo.path(".hillclimb/rounds/r01/blind.failed-1")
+        # Judges 1 and 3 answered, but no reply is written until the whole panel has.
+        self.assertEqual([n for n in os.listdir(failed) if n.endswith(".txt")], [])
         self.mode("ok")
         r = repo.hc("round", "value 11")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual((repo.rows()[-1]["round"], repo.rows()[-1]["verdict"]), ("1", "keep"))
+        self.assertIn("attempt 2", repo.rows()[-1]["notes"])
+
+    def test_changing_the_best_captures_after_they_were_kept_is_refused(self):
+        repo = self.judged_repo()
+        self.candidate(repo, 1, 7)
+        self.assertEqual(repo.hc("round", "value 11").returncode, 0)
+        repo.write(".hillclimb/rounds/r01/view.txt", "quality 1\n")
+        self.candidate(repo, 2, 6)
+        r = repo.hc("round", "value 12")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("changed since that round was kept", r.stderr)
+        self.assertEqual(len(repo.rows()), 2)
+
+    def test_a_candidate_with_views_the_best_lacks_is_refused(self):
+        repo = self.judged_repo()
+        self.candidate(repo, 1, 7)
+        repo.write(".hillclimb/rounds/r01/note-to-judges.txt", "B is the improved one\n")
+        r = repo.hc("round", "value 11")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("capture the same views", r.stderr)
+
+    def test_with_a_capture_command_hc_py_captures_every_round_itself(self):
+        repo = self.judged_repo("--cmd", f"python3 {self.aux}/capture_work.py")
+        self.assertEqual(repo.read(".hillclimb/rounds/r00/view.txt"), "quality 10\n")
+        repo.value(12)
+        repo.write(".hillclimb/rounds/r01/view.txt", "quality 99\n")
+        r = repo.hc("round", "value 12")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("captures the candidate itself", r.stderr)
+        shutil.rmtree(repo.path(".hillclimb/rounds/r01"))
+        r = repo.hc("round", "value 12")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(repo.read(".hillclimb/rounds/r01/view.txt"), "quality 12\n")
+        self.assertEqual(repo.rows()[-1]["verdict"], "keep")
+        repo.value(8)
+        r = repo.hc("round", "value 8")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(repo.rows()[-1]["verdict"], "revert")
+
+    def test_with_a_capture_command_a_failed_panel_sets_the_round_folder_aside(self):
+        repo = self.judged_repo("--cmd", f"python3 {self.aux}/capture_work.py")
+        repo.value(12)
+        self.mode("fail")
+        self.assertEqual(repo.hc("round", "value 12").returncode, 2)
+        self.assertTrue(os.path.isdir(repo.path(".hillclimb/rounds/r01.failed-1")))
+        self.mode("ok")
+        r = repo.hc("round", "value 12")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("attempt 2", repo.rows()[-1]["notes"])
 
     def test_a_reply_with_no_verdict_line_is_a_failed_judge(self):
         repo = self.judged_repo()

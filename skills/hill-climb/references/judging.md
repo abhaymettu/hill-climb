@@ -13,7 +13,16 @@ per judge in parallel (prompt on stdin, cwd and `$HC_JUDGE_DIR` the judge's own 
 command in `blind/judges.json`, and tallies. The command is frozen in `config.json`, so it cannot change
 mid-run, and a reply in `blind/` that hc.py did not write refuses the round. `tally` later refuses a reply
 whose bytes differ from the receipt. A command that reads its prompt from stdin works as is, for example
-`claude -p --model sonnet --allowedTools Read` for stills. Without `--judge-cmd`, do every step by hand:
+`claude -p --model sonnet --allowedTools Read` for stills. With a capture `--cmd` as well, hc.py runs step 1 too
+(`<cmd> <round folder>`), so the agent never touches what the judges compare.
+
+What this proves and what it does not: every reply came from the frozen command, run by hc.py, on views of the
+same names as the best's, against the best's captures as they were when kept. It does not prove what that
+command is on the machine (it runs with the caller's environment, so a shim earlier on `PATH` would be the
+judge), and a judge that disobeys "do not read any other file" can open `blind/flip.json` one folder up. The
+agent can still edit files under `.hillclimb/` after a round; this is a record, not a sandbox.
+
+Without `--judge-cmd`, do every step by hand:
 
 1. Capture the candidate's artifacts with the same capture step as every other round (same views, same
    order, same size, same data). Put them in `.hillclimb/rounds/rNN/`. The best's artifacts are already on
