@@ -257,3 +257,8 @@ report it, do not hide it.
   the one place a reply can drift. Write each judge's prompt as a file at flip time and have the harness, not
   the orchestrator, save the judge's final message as `judge-N.txt`. Also: on stills, votes follow where a
   screen cut falls and whether the last still repeats the one before, so capture views that cut no line.
+- 2026-11-13, t3-switcher-backcast: in judge mode `hc.py baseline` runs the capture `--cmd` with no folder argument,
+  while `round` appends the round folder, so a capture script that requires its out dir fails at baseline. Default the
+  out dir to `.hillclimb/rounds/r00` in the capture script. Also: a session subagent budget (12) caps judge panels at
+  about 3 rounds plus pre-flight; plan the final best-vs-baseline panel into that budget up front.
+
