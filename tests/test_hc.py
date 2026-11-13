@@ -300,6 +300,7 @@ class JudgeRun(Case):
         panel = json.loads(repo.read(f"{blind}/panel.json"))
         self.assertEqual((panel["verdict"], panel["candidate"], panel["best"], panel["score"]),
                          ("WIN", 2, 1, "2/3 cand"))
+        self.assertTrue(panel["replies_written_by"].startswith("the agent"))
         r = repo.hc("round", "bigger value", "--panel", f"{blind}/panel.json")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(repo.rows()[-1]["verdict"], "keep")
@@ -408,6 +409,112 @@ class JudgeRun(Case):
         r = repo.hc("baseline")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("not instructions", r.stdout + r.stderr)
+
+
+STUB_JUDGE = """\
+import os, re, sys
+sys.stdin.read()
+mode = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mode")).read().strip()
+if mode == "fail":
+    sys.exit("model call failed")
+d = os.environ["HC_JUDGE_DIR"]
+q = {s: int(re.search(r"quality (\\d+)", open(os.path.join(d, s, "view.txt")).read()).group(1)) for s in "AB"}
+said = "A" if q["A"] > q["B"] else "B" if q["B"] > q["A"] else "TIE"
+print("I looked at both." if mode == "silent" else f"AXES\\nA: {q['A']}\\nB: {q['B']}\\nVERDICT: {said}")
+"""
+
+FLAT_CAPTURE = """\
+import os, sys
+open(os.path.join(sys.argv[1], "view.txt"), "w").write("quality 5\\n")
+"""
+
+
+class JudgeCommand(Case):
+    """Runs set up with --judge-cmd: hc.py calls the judges and writes their replies."""
+
+    def setUp(self):
+        super().setUp()
+        self.aux = tempfile.mkdtemp(prefix="hc-aux-")
+        with open(os.path.join(self.aux, "judge.py"), "w") as f:
+            f.write(STUB_JUDGE)
+        with open(os.path.join(self.aux, "capture.py"), "w") as f:
+            f.write(FLAT_CAPTURE)
+        self.mode("ok")
+
+    def tearDown(self):
+        shutil.rmtree(self.aux, ignore_errors=True)
+        super().tearDown()
+
+    def mode(self, m):
+        with open(os.path.join(self.aux, "mode"), "w") as f:
+            f.write(m)
+
+    def judged_repo(self, *extra):
+        repo = self.repo()
+        r = repo.hc("setup", "--judges", "3", "--judge-cmd", f"python3 {self.aux}/judge.py", *extra)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        repo.write(".hillclimb/judge-prompt.md", PROMPT)
+        repo.baseline()
+        repo.write(".hillclimb/rounds/r00/view.txt", "quality 5\n")
+        repo.skip_preflight()
+        return repo
+
+    def candidate(self, repo, n, quality):
+        repo.value(10 + n)
+        repo.write(f".hillclimb/rounds/r{n:02d}/view.txt", f"quality {quality}\n")
+
+    def test_a_failing_judge_keeps_the_work_logs_nothing_and_the_round_can_rerun(self):
+        repo = self.judged_repo()
+        commits = repo.commits()
+        self.candidate(repo, 1, 7)
+        self.mode("fail")
+        r = repo.hc("round", "value 11")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("model call failed", r.stderr)
+        self.assertEqual((len(repo.rows()), repo.commits()), (1, commits))
+        self.assertIn("VALUE = 11", repo.read("work.py"))
+        self.assertTrue(os.path.isdir(repo.path(".hillclimb/rounds/r01/blind.failed-1")))
+        self.mode("ok")
+        r = repo.hc("round", "value 11")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((repo.rows()[-1]["round"], repo.rows()[-1]["verdict"]), ("1", "keep"))
+
+    def test_a_reply_with_no_verdict_line_is_a_failed_judge(self):
+        repo = self.judged_repo()
+        self.candidate(repo, 1, 7)
+        self.mode("silent")
+        r = repo.hc("round", "value 11")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("no 'VERDICT: A|B|TIE' line", r.stderr)
+        self.assertEqual(len(repo.rows()), 1)
+
+    def test_tally_refuses_a_reply_edited_after_hc_py_saved_it(self):
+        repo = self.judged_repo()
+        self.candidate(repo, 1, 7)
+        self.assertEqual(repo.hc("round", "value 11").returncode, 0)
+        blind = ".hillclimb/rounds/r01/blind"
+        repo.write(f"{blind}/judge-1.txt", repo.read(f"{blind}/judge-1.txt") + "edited\n")
+        r = repo.hc("tally", blind)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("is not the reply hc.py saved", r.stderr)
+
+    def test_judged_holdout_stops_a_climb_the_holdout_does_not_see(self):
+        repo = self.judged_repo("--holdout-cmd", f"python3 {self.aux}/capture.py", "--budget", "1")
+        self.candidate(repo, 1, 7)
+        r = repo.hc("round", "value 11")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("HOLDOUT (final): panel 0/3 cand -> NOISE", r.stdout)
+        self.assertIn("STOP: overfitting", r.stdout)
+        last = json.loads(repo.read(".hillclimb/holdout.json"))[-1]
+        self.assertEqual((last["overfit"], "pending" in last), (True, False))
+        receipt = json.loads(repo.read(".hillclimb/rounds/holdout/r01/blind/judges.json"))
+        self.assertEqual(receipt["caller"], "hc.py holdout r01 (final)")
+        r = repo.hc("holdout", "--panel", ".hillclimb/rounds/holdout/r01/blind/panel.json")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+
+    def test_judge_cmd_needs_judges(self):
+        r = self.repo().hc("setup", "--cmd", "true", "--direction", "max", "--judge-cmd", "true")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
 
 
 class Preflight(Case):

@@ -57,6 +57,8 @@ judges) with their setup files and logs. Read one if you want to see what a fini
 
 `python3 -m unittest discover -s tests -v` runs the behaviour tests of `hc.py` in throwaway git repos (under a
 minute, standard library only). `HC=/path/to/hc.py` points them at another copy, such as an installed one.
+`bash test/judge-script.sh` climbs a `--judge-cmd` run with a stub judge and checks that hc.py wrote every
+reply itself and refuses a planted one (a few seconds; it takes `HC=` too).
 
 ## The benchmark
 
