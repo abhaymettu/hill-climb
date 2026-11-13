@@ -281,3 +281,10 @@ report it, do not hide it.
 - 2026-11-13: the agent that climbs should never hold the pen for its own grades. With `--judge-cmd` the judge
   command lives in the locked config and `round` writes every reply from that command's stdout, so a reply in
   the blind folder before the judges ran can only be planted, and is refused (`test/judge-script.sh`).
+
+- 2026-11-13, an offer-page climb: a harness guard can refuse a shell line that loops `claude -p` on a large
+  model, and a refused line runs nothing, so a `mkdir` chained in front of the loop never happened and the
+  first panel read files that did not exist. Make the folders in their own command first, and when the judge
+  command is a loop of headless calls, either use the slim batch route the guard names or run the judges as
+  fresh-context subagents and save their replies yourself. A judge told "read only this file" correctly
+  refuses to score a missing file; treat that refusal as a setup failure, not a vote.
