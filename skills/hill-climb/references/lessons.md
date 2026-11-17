@@ -47,3 +47,9 @@ Newest last. Add one when a run shows a gap the skill let through.
   round removed the only HIGH and the review named four new MEDIUM, 4 against 4, so the rule reverted a round that
   was arguably better, and changing the rule after seeing the result was not allowed. When a gate has severities,
   freeze how they rank with the measure (compare HIGH first, then MEDIUM), and say what a tie does.
+- 2026-11-17, review gate, raw counts from a sampling reviewer: the frozen rule compared one review's count with
+  the next. Twice a round closed every finding it was sent for and its review named as many others on lines the
+  round never touched, so the raw counts tied and the rule reverted the better head (once undone by a ruling,
+  once not: the branch ended with four known findings beside a tag with two). Charge untouched-line findings to
+  the kept head before comparing, freeze the keep rule in charged counts, and when the count stops falling
+  across reviews call it a floor and hand the findings over (measures.md, review gate, step 8).

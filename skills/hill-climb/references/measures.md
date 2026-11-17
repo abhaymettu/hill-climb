@@ -58,6 +58,15 @@ trap: a reviewer is a sampler, not a census. Each pass reads the code again and 
    kept only if that count goes down. Switching scores is a measure change: log both values at one commit.
    Seen: a ledger closed 5 of 5 in four rounds, then the final review found 5 new findings, every one on a line
    the fixes wrote, with no rounds left.
+   Two reviews are two samples, so never compare their raw counts. Before comparing, charge every finding of
+   the new review that sits on a line the round did not change (`git diff -U0 <kept> <new>`) to the kept head
+   too: it was true there and only now noticed. Compare the charged counts, and write the keep rule in those
+   words when you freeze it; "fewer than N in the next review" is a raw count and will tie. Seen twice in one
+   day: a round closed both of its findings, its review named two others on old lines, 2 against 2, and the
+   rule reset the branch to a head with all four.
+   Watch for a floor. If the reviewer names about the same number every time whatever was fixed (five reviews
+   gave 4, 3, 3, 2, 2), the count has stopped measuring the work. Say so, stop spending rounds on it, and hand
+   over the open findings with what each would take, instead of promising zero.
 9. **Shrink the surface.** Every added line is a new place for the reviewer to find something. Prefer the fix
    that deletes code, or weakens a claim to what a test shows, over one that adds machinery to defend the
    claim. Words count as surface: a number or guarantee in a comment, a README or output text must be one a
