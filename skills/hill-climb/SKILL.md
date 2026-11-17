@@ -23,14 +23,19 @@ Run `python3 <skill-dir>/scripts/hc.py -h`.
 |---|---|---|
 | **scalar** | A command prints or implies one number: wall time, bundle bytes, loss, p95 latency, a benchmark score | `hc.py compare` on repeated measurements |
 | **judge** | Quality is a matter of taste: a page's look, an image, copy, an API's feel | blind pairwise vote of fresh-context judges, see `references/judging.md` |
-| **composite** | Either of the above plus gates | gates first, then the score |
+| **findings** | The work must pass a reviewer or a rubric: code review findings, an audit, a labelled score table | count of open findings at or above a bar set in advance, from a frozen ledger, see `references/measures.md` |
+| **composite** | Any of the above plus gates | gates first, then the score |
 
 Gates are pass/fail checks that veto a round whatever the score says: tests pass, it builds, contrast
 holds, memory stays under a cap, no guard metric regresses. Nearly every real run is composite. A faster
 function that breaks a test is a loss.
 
-If the user gives no measure, propose one in a sentence and get a yes before starting. A climb toward
-the wrong number is worse than no climb.
+If the user gives no measure, propose one in a sentence and get a yes before starting (when nobody is
+there to answer, write it in HILLCLIMB.md and go). A climb toward the wrong number is worse than no climb.
+`references/measures.md` says how to build the measure for each kind of work, and what to freeze: a number
+from a command, a review or rubric gate, a labelled score table, taste, low-level code, mixed measures,
+expensive rounds. Read the part for your kind before setup. Whatever the kind, three things are written
+before round 1: a frozen score, gates that veto, a stop rule.
 
 ### Ports and rewrites: parity first, then speed
 
@@ -86,6 +91,10 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
 **The score never changes mid-run.** Not the command, the regex, the rubric, the views, the judge count
 or the gates. If it must change, that is a restart: note why under Restarts in HILLCLIMB.md and
 re-measure round 0. Otherwise, a round-7 "win" was measured with a different ruler from round 3's.
+When rounds are too expensive to restart (a remote build, a paid review), log a `measure-change` row instead:
+what changed and why, and the current best re-measured under the new measure, both values for that one
+commit. Numbers from the two sides of that row are never compared. Write every score with its denominator
+and commit (`19/21 @ a1b2c3d`), so a changed ruler shows.
 
 Freezing the evaluation is equally important. Editing the test, the benchmark input or the judge prompt
 to make a number move is not a win; it is a different run. That is why HILLCLIMB.md lists what is frozen.
@@ -125,7 +134,8 @@ A run set up before locks existed has none: hc.py prints one `legacy run` line a
      typed `--verdict` is refused, and so is a panel flipped for another round or a reply edited after the
      tally (nothing is committed, so fix it and run the same round again). The script can check that the
      record is consistent, not who wrote a reply: replies come only from fresh-context judges, saved unedited.
-3. Without `round` (no config, an unusual score), do the same steps by hand, in this order: commit
+3. Without `round` (no config, an unusual score, a findings run, or a target on a remote machine or in someone
+   else's repo, where the log lives in your own folder instead), do the same steps by hand, in this order: commit
    (`git commit -am "r07: <change>"`); run the gates, any failure is a loss; `hc.py measure --runs 5 --regex
    '<re>' --out .hillclimb/rounds/r07.json -- <cmd>`; `hc.py compare .hillclimb/rounds/best.json
    .hillclimb/rounds/r07.json --direction min --min-delta 0.02`; `hc.py log .hillclimb/results.tsv round=7
@@ -191,7 +201,9 @@ tweaks once real gains run out.
 far from its limit, and the next rounds start from a new, better best. Do not end your turn, write the
 report or ask whether to continue while `hc.py round` still prints `NEXT`.
 
-Defaults if the user named none: 20 rounds, patience 5.
+Defaults if the user named none: 20 rounds, patience 5. When a round is expensive (minutes of remote
+build, a full review), 3 to 5 rounds and patience 1: the first round that does not improve the score ends
+the run, and what is left is reported with its ratings.
 
 ## 6. Escaping a local peak
 
@@ -250,6 +262,10 @@ report it, do not hide it.
 - Round 1 run without a pre-flight, or a holdout that was opened.
 - A WIN from a single measurement, or with a gain inside the noise band.
 - The judge knew which side was new, or the builder judged its own change.
+- A score quoted without its denominator and commit, or compared across a measure change.
+- A reviewer's finding on old code counted against this round, or fixed with no ledger row and no check.
+- A label changed to match the code, or the code to match a label, with no written ruling on which is right.
+- "Fix, review again" with no bar and no ledger: the count falls every round and never reaches zero.
 - Two ideas in one round.
 - A round missing from the log because it lost.
 - The run ended after a big win while rounds and patience were left.
@@ -288,3 +304,9 @@ report it, do not hide it.
   command is a loop of headless calls, either use the slim batch route the guard names or run the judges as
   fresh-context subagents and save their replies yourself. A judge told "read only this file" correctly
   refuses to score a missing file; treat that refusal as a setup failure, not a vote.
+
+- 2026-11-17, a code change that had to pass a review gate on a remote box: three review rounds each said
+  fix, the findings went 14 to 4 and every review raised ones the last had not, and the score table read
+  10 of 10 and later 19 of 21 because cases and checks were added under it. Nothing was frozen, so no round
+  could be called a win or a loss. A reviewer samples; take a census at round 0, set the bar first, keep a
+  ledger, give each fix its own check, and run the full review last (`references/measures.md`).
