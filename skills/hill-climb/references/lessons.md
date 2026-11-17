@@ -43,3 +43,7 @@ Newest last. Add one when a run shows a gap the skill let through.
   receipt the gate reads. Three fresh agents given only this skill and a one-line task (copy, low-level code, a
   model score) each set up a frozen score, gates and a stop rule; all three would have let hc.py commit in a
   parent repo, and half the body did not apply to any one of them, so the body now carries the loop only.
+- 2026-11-17, review gate, tie on a count: the frozen keep rule was "fewer HIGH plus MEDIUM than before". The last
+  round removed the only HIGH and the review named four new MEDIUM, 4 against 4, so the rule reverted a round that
+  was arguably better, and changing the rule after seeing the result was not allowed. When a gate has severities,
+  freeze how they rank with the measure (compare HIGH first, then MEDIUM), and say what a tie does.
