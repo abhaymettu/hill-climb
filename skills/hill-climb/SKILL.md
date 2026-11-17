@@ -37,26 +37,14 @@ from a command, a review or rubric gate, a labelled score table, taste, low-leve
 expensive rounds. Read the part for your kind before setup. Whatever the kind, three things are written
 before round 1: a frozen score, gates that veto, a stop rule.
 
-### Ports and rewrites: parity first, then speed
-
-When the target is a re-implementation of something that already exists (a port to another language, a
-clone of a tool, a replacement library), the existing thing is the score. Run it as two climbs:
-
-1. **Parity.** Pin the reference's exact version. Build a corpus of real inputs, then copy some of them
-   with faults injected (a syntax error, a missing file, a bad type) so error paths and messages are
-   compared too, not just the happy path. Record the reference's outputs once and freeze them. Score:
-   the count of cases whose output matches byte for byte (scalar, `--direction max`, `--min-delta 0`).
-   Stop at all cases matching.
-2. **Speed (or size).** Restart with parity as a gate: every case still matches. Score the timing against
-   a stated target ("2x faster than the reference") and stop when it is reached.
-
-Never loosen the comparison to make a case pass; normalizing a field that is legitimately different
-(a timestamp, an absolute path) is a setup decision made before round 0 and written in HILLCLIMB.md.
+Less common shapes (a port or rewrite scored against the original, parallel candidates, a round by hand, a
+run set up before locks) are in `references/odd-cases.md`.
 
 ## 2. Setup, written before round 1
 
 1. Work on a new branch, `hill-climb/<tag>` (if the name is taken by an earlier run, add `-2`), with no uncommitted changes to tracked files (untracked build
-   output such as `__pycache__/` is fine). If the target is not in git, `git init` it. Uncommitted user work
+   output such as `__pycache__/` is fine). If the target is not in git, or is a folder inside a larger repo, `git init` inside the target folder itself:
+   hc.py commits and hard-resets the repo it runs in, and that must never be the parent. Uncommitted user work
    must never be at risk from a revert: commit it on its own branch, stash it, or stop and ask.
 2. Scalar runs: `hc.py setup --cmd '<score command>' --regex '<metric regex>' --direction min|max
    --min-delta 0.02 --gate '<test command>' --frozen <path> --budget 20 --patience 5` (gates and frozen paths
@@ -65,9 +53,9 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
    `.hillclimb/results.tsv` and `.hillclimb/rounds/`, and adds `.hillclimb/` to `.git/info/exclude` so the log
    survives every revert. Judge runs: `hc.py setup --judges 3 --judge-cmd '<headless model call>' --frozen
    <views or capture script>` (the capture command as `--cmd` is optional). With `--judge-cmd` (for example
-   `'claude -p --model sonnet --allowedTools Read'`), hc.py calls the judges and saves their replies itself, so
+   `'claude -p --bare --model sonnet --allowedTools Read'`), hc.py calls the judges and saves their replies itself, so
    the climbing agent never writes one. Leave it out only when judges can run as subagents and nothing else. For a fixed eval set or a judged product, add
-   `--holdout-cmd '<cmd>'`, see "Climbing on a fixed eval set".
+   `--holdout-cmd '<cmd>'`, see `references/eval-sets.md`.
 3. Fill in HILLCLIMB.md: the target and its editable surface, what is frozen (tests, eval harness, the
    benchmark itself), the score, the exact gate commands, the budget, the stop rule. For judge mode, also
    write the judge prompt to `.hillclimb/judge-prompt.md` from the template in `references/judging.md`,
@@ -78,15 +66,14 @@ Never loosen the comparison to make a case pass; normalizing a field that is leg
    exactly as every later round will be measured, locks the frozen content, and logs it. For judge mode, capture
    the baseline artifacts into `.hillclimb/rounds/r00/`.
 5. **Pre-flight, before round 1.** Prove the measure can see a difference and catches a cheat; `round` refuses
-   until both pass. Break the work on purpose (a wrong answer, a broken layout, a truncated output) and run
-   `hc.py preflight broken`: a scalar run must score worse or fail a gate; a judge run must have the panel
-   prefer the baseline (capture the broken version into `.hillclimb/rounds/preflight/cand/`; with
-   `--judge-cmd`, `preflight broken` flips and judges it itself; without it, `flip` it against `r00` into
-   `rounds/preflight/blind`, judge, `tally`, then `preflight broken --panel <panel.json>`). Restore
-   it. Then change one frozen file (add a line to the eval set) and run `hc.py preflight cheat`; it must
-   report the change. Restore that too. If a check fails, the capture, views, prompt or score is broken: fix
-   the setup and re-run `baseline`. Only when there is truly nothing to break: `hc.py preflight skip --why
-   "<reason>"`, which stays in the record. Nothing in the pre-flight is logged as a round.
+   until both pass. Break the work on purpose (a wrong answer, a broken layout, a truncated output) in a way
+   the gates still accept, and run `hc.py preflight broken`: the score must come out worse (a judge panel must
+   prefer the baseline; steps in `references/judging.md`). A break that only fails a gate proves the gate, not
+   the score, so break it again until the score has to tell. Restore it. Then change one frozen file (add a
+   line to the eval set) and run `hc.py preflight cheat`; it must report the change. Restore that too. If a
+   check fails, the capture, views, prompt or score is broken: fix the setup and re-run `baseline`. Only when
+   there is truly nothing to break: `hc.py preflight skip --why "<reason>"`, which stays in the record.
+   Nothing in the pre-flight is logged as a round.
 
 **The score never changes mid-run.** Not the command, the regex, the rubric, the views, the judge count
 or the gates. If it must change, that is a restart: note why under Restarts in HILLCLIMB.md and
@@ -103,9 +90,6 @@ and `config.json` are covered too. `round` checks the locks before the gates and
 change refuses the round (logged `refused`, exit 3). Git cannot restore an ignored file, so put it back by
 hand or restart with `setup --force`.
 
-A run set up before locks existed has none: hc.py prints one `legacy run` line and keeps the old checks
-(and `--verdict`). Let them finish; start new runs with `setup`.
-
 ## 3. One round
 
 1. **Pick one idea.** One change per round, so a result can be attributed. Prefer ideas the last loss's
@@ -116,32 +100,12 @@ A run set up before locks existed has none: hc.py prints one `legacy run` line a
    anything else, and prints `NEXT: ...` or `STOP: ...`. Do what that line says.
    - A deletion that ties: `hc.py round "<change>" --simpler` keeps it at equal score.
    - A trivial slip (a typo, a missing import) that fails a gate costs that round; fix it as the next round.
-   - Judge mode with `--judge-cmd`: capture into the folder the NEXT line names, then `hc.py round
-     "<change>"`. If the setup gave a capture `--cmd`, skip the capture: hc.py runs `<cmd> <folder>` itself
-     at baseline and every round, and refuses a round folder someone else made. The candidate must show the
-     same views (file names) as the best, and the best's captures are locked by hash once kept. After the
-     gates pass, hc.py flips the candidate against the best's captures, runs the judge
-     command once per judge (the frozen prompt on stdin, the judge's blind folder as cwd and `$HC_JUDGE_DIR`),
-     saves each stdout unedited as `blind/judge-N.txt` with a receipt in `blind/judges.json`, and counts the
-     votes. `--panel` and `--verdict` are refused, and so is a round whose `blind/` folder already exists: a
-     reply hc.py did not write is a planted one. If a judge fails (a crash, a timeout, no `VERDICT:` line),
-     nothing is logged, the commit is undone with the change left in the tree, and the replies are set aside
-     as `blind.failed-N` (the log row of the round that finally runs says `attempt N`); run the same round
-     again. No reply reaches the disk until every judge has answered.
-   - Judge mode without `--judge-cmd`: run the panel first (capture into the folder the NEXT line names, `flip`,
-     judges, save each reply as `blind/judge-N.txt`, `hc.py tally <blind dir>`, see `references/judging.md`), then
-     `hc.py round "<change>" --panel .hillclimb/rounds/rNN/blind/panel.json`. The script counts the votes; a
-     typed `--verdict` is refused, and so is a panel flipped for another round or a reply edited after the
-     tally (nothing is committed, so fix it and run the same round again). The script can check that the
-     record is consistent, not who wrote a reply: replies come only from fresh-context judges, saved unedited.
+   - Judge mode: capture, then `hc.py round`; hc.py flips, runs the judges and counts the votes. The exact
+     steps, with and without `--judge-cmd`, are in `references/judging.md`, "A judge round with hc.py". If the
+     setup gave a capture `--cmd`, hc.py captures by itself and the "capture into" part of NEXT does not apply.
 3. Without `round` (no config, an unusual score, a findings run, or a target on a remote machine or in someone
-   else's repo, where the log lives in your own folder instead), do the same steps by hand, in this order: commit
-   (`git commit -am "r07: <change>"`); run the gates, any failure is a loss; `hc.py measure --runs 5 --regex
-   '<re>' --out .hillclimb/rounds/r07.json -- <cmd>`; `hc.py compare .hillclimb/rounds/best.json
-   .hillclimb/rounds/r07.json --direction min --min-delta 0.02`; `hc.py log .hillclimb/results.tsv round=7
-   change="..." score=<median> gates=pass verdict=keep|revert notes="..."` before reverting, so the row holds
-   the candidate's commit; on a keep copy the JSON to `best.json`, otherwise `git reset --hard HEAD~1`;
-   `hc.py status .hillclimb/results.tsv --patience 5 --budget 20`.
+   else's repo, where the log lives in your own folder instead), do the same steps by hand, in the same order:
+   commit, gates, measure, compare, log, keep or revert. The commands are in `references/odd-cases.md`.
 
 Every round is logged, losses included. The log is the run's memory; a silent loop looks the same as a
 stuck one.
@@ -161,8 +125,10 @@ A scalar is a sample, not a fact. Treat a single run as a rumor.
   about, prints `NOISY` with the runs that would resolve them. Act on it before round 1 (`setup --force
   --runs N`, then `baseline` again): with an 8% run-to-run spread, 5 runs hide every gain under about 14%,
   so a careful climb rejects every real small improvement and ends where it started.
-- Pick `--min-delta` for what matters to the user, not what the instrument can see: 2% for timings, 0 for
-  deterministic counts like bytes or test failures.
+- `--min-delta` is relative to the best score (0.02 is 2% of it), not an absolute amount. Pick it for what
+  matters to the user, not what the instrument can see: 2% for timings, 0 for exact sizes such as bytes. For a
+  count out of N cases (accuracy, tests passing) one more case is luck: set it so a win needs at least 2
+  (2 divided by the best count).
 - Mind the instrument's resolution. A metric printed to 4 decimals that reaches 0.007 moves in steps of
   about 1.5%, and its MAD can read 0. Decide at setup how small the number can get, and set `--min-delta`
   to at least 2 or 3 steps at that size. If it bites mid-run anyway, widening the bar or making the
@@ -174,28 +140,18 @@ A scalar is a sample, not a fact. Treat a single run as a rumor.
   and the next edit land in the same second. `round` clears untracked `__pycache__` folders and waits out the
   second after a revert; by hand, do the same, or clear the cache in the score command.
 
-### Climbing on a fixed eval set
-
-When the score is accuracy on a fixed set (a validation split, a prompt eval, a benchmark suite), every
-kept round fits that set a little. Twenty rounds of small wins on 400 examples can be pure fit.
-
-- Choose settings (hyperparameters, thresholds, prompt wording variants) inside the training data, with
-  cross-validation, and let the eval set only decide the round. Never sweep a setting against the eval set.
-- Prefer larger, principled changes over tuning a number to the third decimal.
-- Before round 0, set aside about 20% of the real set as a holdout, add its path to `--frozen`, and pass
-  `--holdout-cmd '<the score command on the holdout>'`. Never open those files again. hc.py runs it at
-  baseline, after every 5th win and at the end. If the visible score climbed and the holdout did not, it
-  prints `STOP: overfitting`: stop and report both numbers. Judge runs: the holdout command captures held-out
-  views; hc.py flips best against baseline on them and, with `--judge-cmd`, judges them on the spot;
-  without it, it waits for a panel (`hc.py holdout --panel`).
-- In the report, call the final number what it is: the score on the set you climbed on, which overstates
-  performance on new data, and give the holdout number beside it.
+When the score is accuracy on a fixed set (a validation split, a prompt eval, a benchmark suite), every kept
+round fits that set a little. Set aside a holdout before round 0 and pass `--holdout-cmd`: see
+`references/eval-sets.md`.
 
 ## 5. Stop rules
 
 Stop at the first of: the round budget or time budget, `patience` rounds in a row without a win, the
 target value reached, the holdout flat while the visible score climbs, or the user says stop. Without a stop rule, the run spends hours on noise-level
 tweaks once real gains run out.
+
+hc.py enforces the budget, the patience and the holdout. The target value has no flag: write it in
+HILLCLIMB.md and check it yourself after every `round`.
 
 **Those are the only stop rules.** A large win is not one: a 100x first round usually means the code was
 far from its limit, and the next rounds start from a new, better best. Do not end your turn, write the
@@ -217,15 +173,7 @@ losses in a row the run stops. With a patience of 2 or less there is no room for
 setup rather than skipping it silently. Never restart from the baseline unless the log shows the climb went sideways
 (see the drift check in `references/judging.md`).
 
-## 7. Parallel candidates (optional)
-
-When rounds are slow and ideas are independent, try 2 or 3 candidates per round in separate git worktrees
-(or subagents, each on its own branch). Score each against the same best and keep only the single best
-winner. Then the next round starts from it. Keep it bounded: never more than 3 at once, and never run
-heavy jobs (builds, benchmarks, renders) in parallel with each other when the score is a timing, since
-they distort each other's numbers.
-
-## 8. Long runs and handoff
+## 7. Long runs and handoff
 
 - One heavy job at a time by default.
 - Watch round wall time in the log. If the gates and the measurement take far longer than the change, the
@@ -237,7 +185,7 @@ they distort each other's numbers.
 - Anyone resuming reads HILLCLIMB.md, the last rows of results.tsv and NEXT.md, and carries on from the
   best commit.
 
-## 9. Report
+## 8. Report
 
 End with:
 
@@ -274,39 +222,5 @@ report it, do not hide it.
 
 ## Lessons
 
-- 2026-11-12: three holes, each proven on a test repo. A frozen eval set that git ignores grew from 3 to 6
-  lines mid-run and the round was kept as a WIN, because the freeze check was a `git diff`. An edit to
-  `.hillclimb/judge-prompt.md` passed for the same reason. `round --verdict WIN` kept a round with no judge
-  reply on disk. Fix: lock by content hash, let the script tally the panel, and test each hole before and
-  after (`tests/test_hc.py`). Any check built on git sees only what git tracks.
-- 2026-11-12: a climb on a fixed set needs a holdout the script runs, not advice to keep one; and a panel that
-  cannot see the views votes TIE every round, so prove the measure separates a broken version before round 1.
-- 2026-11-12, from the review: check what you can before the commit. A panel checked after `round` committed
-  reset an honest round's work over a missing reply file. And a copied blind folder passed until flip.json was
-  tied to its own folder. The script can prove a record is consistent, never who wrote a judge reply.
-- 2026-11-12, from a 28-round page climb: a judge told to read stills and change nothing cannot save its own
-  reply, so the orchestrator retyped about 30 replies by hand to give `tally` its files. That is slow and it is
-  the one place a reply can drift. Write each judge's prompt as a file at flip time and have the harness, not
-  the orchestrator, save the judge's final message as `judge-N.txt`. Also: on stills, votes follow where a
-  screen cut falls and whether the last still repeats the one before, so capture views that cut no line.
-- 2026-11-13, t3-switcher-backcast: in judge mode `hc.py baseline` runs the capture `--cmd` with no folder argument,
-  while `round` appends the round folder, so a capture script that requires its out dir fails at baseline. Default the
-  out dir to `.hillclimb/rounds/r00` in the capture script. Also: a session subagent budget (12) caps judge panels at
-  about 3 rounds plus pre-flight; plan the final best-vs-baseline panel into that budget up front.
-
-- 2026-11-13: the agent that climbs should never hold the pen for its own grades. With `--judge-cmd` the judge
-  command lives in the locked config and `round` writes every reply from that command's stdout, so a reply in
-  the blind folder before the judges ran can only be planted, and is refused (`test/judge-script.sh`).
-
-- 2026-11-13, an offer-page climb: a harness guard can refuse a shell line that loops `claude -p` on a large
-  model, and a refused line runs nothing, so a `mkdir` chained in front of the loop never happened and the
-  first panel read files that did not exist. Make the folders in their own command first, and when the judge
-  command is a loop of headless calls, either use the slim batch route the guard names or run the judges as
-  fresh-context subagents and save their replies yourself. A judge told "read only this file" correctly
-  refuses to score a missing file; treat that refusal as a setup failure, not a vote.
-
-- 2026-11-17, a code change that had to pass a review gate on a remote box: three review rounds each said
-  fix, the findings went 14 to 4 and every review raised ones the last had not, and the score table read
-  10 of 10 and later 19 of 21 because cases and checks were added under it. Nothing was frozen, so no round
-  could be called a win or a loss. A reviewer samples; take a census at round 0, set the bar first, keep a
-  ledger, give each fix its own check, and run the full review last (`references/measures.md`).
+Dated lessons from real runs are in `references/lessons.md`. Read the ones for your score mode before
+setup, and add one there when a run shows a gap.

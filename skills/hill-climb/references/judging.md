@@ -122,3 +122,33 @@ than one judge, because the judges make the same mistakes. The method and data a
 Any fresh model context works as a judge: a headless CLI call with the images attached, or an API call.
 What matters is that it has no memory of the work in progress and no hint of which side is new. Give that
 call to `setup --judge-cmd` and hc.py makes it, so no reply passes through the climbing agent's hands.
+
+## A judge round with hc.py
+
+Judges must be fresh in fact: a headless call that loads the climber's instructions file, memory, hooks or MCP
+servers can be steered by them on every vote. Start the judge with user config off (for Claude Code,
+`claude -p --bare ...`, or empty `--setting-sources` with `--strict-mcp-config`) and read one reply to check it
+mentions none of them.
+
+Pre-flight: capture the broken version into `.hillclimb/rounds/preflight/cand/` (with a capture `--cmd`, hc.py
+captures it). With `--judge-cmd`, `preflight broken` flips and judges it itself; without it, `flip` it against
+`r00` into `rounds/preflight/blind`, judge, `tally`, then `preflight broken --panel <panel.json>`.
+
+- Judge mode with `--judge-cmd`: capture into the folder the NEXT line names, then `hc.py round
+  "<change>"`. If the setup gave a capture `--cmd`, skip the capture: hc.py runs `<cmd> <folder>` itself
+  at baseline and every round, and refuses a round folder someone else made. The candidate must show the
+  same views (file names) as the best, and the best's captures are locked by hash once kept. After the
+  gates pass, hc.py flips the candidate against the best's captures, runs the judge
+  command once per judge (the frozen prompt on stdin, the judge's blind folder as cwd and `$HC_JUDGE_DIR`),
+  saves each stdout unedited as `blind/judge-N.txt` with a receipt in `blind/judges.json`, and counts the
+  votes. `--panel` and `--verdict` are refused, and so is a round whose `blind/` folder already exists: a
+  reply hc.py did not write is a planted one. If a judge fails (a crash, a timeout, no `VERDICT:` line),
+  nothing is logged, the commit is undone with the change left in the tree, and the replies are set aside
+  as `blind.failed-N` (the log row of the round that finally runs says `attempt N`); run the same round
+  again. No reply reaches the disk until every judge has answered.
+- Judge mode without `--judge-cmd`: run the panel first (capture into the folder the NEXT line names, `flip`,
+  judges, save each reply as `blind/judge-N.txt`, `hc.py tally <blind dir>`, see `references/judging.md`), then
+  `hc.py round "<change>" --panel .hillclimb/rounds/rNN/blind/panel.json`. The script counts the votes; a
+  typed `--verdict` is refused, and so is a panel flipped for another round or a reply edited after the
+  tally (nothing is committed, so fix it and run the same round again). The script can check that the
+  record is consistent, not who wrote a reply: replies come only from fresh-context judges, saved unedited.

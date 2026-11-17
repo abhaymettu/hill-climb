@@ -53,6 +53,11 @@ trap: a reviewer is a sampler, not a census. Each pass reads the code again and 
 8. **Review last.** A full review is the expensive step. Run each finding's own check and the gates after
    every round; run the frozen review only when the ledger says zero open, as the final measurement.
 
+When the gate is a tool with its own pass rule (a review command, a CI check, a linter's exit code), read that
+rule before setting the bar. The bar is what the tool counts, at the tool's severity; your own rating only
+orders the work, and a finding you rate low still blocks if the tool puts it at the bar. If the tool writes a
+receipt that the gate later reads, run the census in a copy of the tree, or the census overwrites it.
+
 ## A score table (labelled cases)
 
 When the score is "cases the code gets right" against hand labels, the labels are part of the ruler.
@@ -66,6 +71,11 @@ When the score is "cases the code gets right" against hand labels, the labels ar
   is a round. A label written by the same hand that wrote the code proves only that the code does what its
   author meant, so say so beside the score, and get labels from someone else (or blind) when you can.
 
+After a ruling changes a label, check that every verdict still has at least one case that expects it: a
+relabel can leave an outcome untested. Write down before round 1 what happens when an honest fix makes a
+labelled case unsupportable (a wider interval that no longer clears, say): change the case's data, never its
+label or the threshold, and log it as a measure change.
+
 ## Taste
 
 UI, copy, design, a README's look. Blind pairwise judges, see `judging.md`. Capture every view the reader will
@@ -73,6 +83,9 @@ see: light and dark, narrow and wide, the empty and the full state. Gates are th
 cannot see: text contrast, no overflow, links resolve, nothing clipped. If a reader is colour-blind, gate on
 lightness difference between colours that carry meaning, and on the meaning also being in text or shape. For
 copy, gate on the facts: every number and name in the candidate is in the source.
+
+A facts gate covers claims as well as numbers: every "most", "all" or "never" in the copy needs the count it
+rests on, or the vaguest claim wins the vote.
 
 ## Low-level code
 
