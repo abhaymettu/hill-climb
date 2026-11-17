@@ -68,7 +68,9 @@ trap: a reviewer is a sampler, not a census. Each pass reads the code again and 
 When the gate is a tool with its own pass rule (a review command, a CI check, a linter's exit code), read that
 rule before setting the bar. The bar is what the tool counts, at the tool's severity; your own rating only
 orders the work, and a finding you rate low still blocks if the tool puts it at the bar. If the tool writes a
-receipt that the gate later reads, run the census in a copy of the tree, or the census overwrites it.
+receipt that the gate later reads, run the census in a copy of the tree, or the census overwrites it. A run
+that ends with no verdict (the reviewer crashed, timed out or answered nothing) is not a measurement: zero
+findings without a verdict is not a pass and not a round. Rerun it, and keep the failed output beside the log.
 
 ## A score table (labelled cases)
 
