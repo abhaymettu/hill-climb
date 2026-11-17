@@ -50,8 +50,20 @@ trap: a reviewer is a sampler, not a census. Each pass reads the code again and 
      count against the round, and it is logged as a measure change because the denominator grew.
    If two reviews in a row find new baseline problems at or above the bar, the census was too thin: stop
    climbing, take a wider census, restart the count.
-8. **Review last.** A full review is the expensive step. Run each finding's own check and the gates after
-   every round; run the frozen review only when the ledger says zero open, as the final measurement.
+8. **The gate reads the whole change, so count the whole change.** The ledger holds what the census saw; a fix
+   writes lines the census never saw, and the reviewer reads those as new. A ledger at zero is not a pass. Run
+   each finding's own check and the gates every round, and run the frozen review on the whole change after any
+   round whose fix is more than a few lines, or at the latest when half the rounds are spent, never only at the
+   end. From the first such review on, the score is that review's count at or above the bar, and a round is
+   kept only if that count goes down. Switching scores is a measure change: log both values at one commit.
+   Seen: a ledger closed 5 of 5 in four rounds, then the final review found 5 new findings, every one on a line
+   the fixes wrote, with no rounds left.
+9. **Shrink the surface.** Every added line is a new place for the reviewer to find something. Prefer the fix
+   that deletes code, or weakens a claim to what a test shows, over one that adds machinery to defend the
+   claim. Words count as surface: a number or guarantee in a comment, a README or output text must be one a
+   check asserts, at the value the check asserts. Before paying for a review, read the round's diff as someone
+   who has never seen the work, list what they would flag, and fix or delete each item. Log lines added and
+   removed per round; a fix round that grows the change needs a reason in the log.
 
 When the gate is a tool with its own pass rule (a review command, a CI check, a linter's exit code), read that
 rule before setting the bar. The bar is what the tool counts, at the tool's severity; your own rating only

@@ -214,6 +214,8 @@ report it, do not hide it.
 - A reviewer's finding on old code counted against this round, or fixed with no ledger row and no check.
 - A label changed to match the code, or the code to match a label, with no written ruling on which is right.
 - "Fix, review again" with no bar and no ledger: the count falls every round and never reaches zero.
+- A findings ledger at zero taken as a pass: the reviewer reads the lines the fixes added too. Count the review
+  on the whole change, and prefer the fix that removes lines or claims.
 - Two ideas in one round.
 - A round missing from the log because it lost.
 - The run ended after a big win while rounds and patience were left.

@@ -35,7 +35,7 @@ Newest last. Add one when a run shows a gap the skill let through.
   fix, the findings went 14 to 4 and every review raised ones the last had not, and the score table read
   10 of 10 and later 19 of 21 because cases and checks were added under it. Nothing was frozen, so no round
   could be called a win or a loss. A reviewer samples; take a census at round 0, set the bar first, keep a
-  ledger, give each fix its own check, and run the full review last (`references/measures.md`).
+  ledger, give each fix its own check, and count the review on the whole change (`references/measures.md`).
 - 2026-11-17, the same change, climbed under this skill: the gate was a tool with its own pass rule (no
   finding at its two top severities), so the bar was the reviewer's severity and the plan to leave the
   low-rated findings would never have passed. One census review at the baseline found a fifth finding before
