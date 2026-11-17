@@ -120,3 +120,7 @@ Sometimes it must: a label was wrong, the base moved, a check was missing. Do no
 throw the run away. Log a `measure-change` row (what changed, why, who ruled), re-measure the current best
 under the new measure, and write both values for that one commit. Numbers on the two sides of the line are
 never compared. This is not a round and it never counts as a win.
+
+A round that an honest change loses because the measure itself was wrong (a gate that a correct fix cannot
+pass, a case whose label the data cannot support) is not a plateau. Revert it, log the measure change, and run
+the same change again under the new measure. The round is spent from the budget; patience is not.
