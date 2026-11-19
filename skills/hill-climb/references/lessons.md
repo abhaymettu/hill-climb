@@ -53,3 +53,4 @@ Newest last. Add one when a run shows a gap the skill let through.
   once not: the branch ended with four known findings beside a tag with two). Charge untouched-line findings to
   the kept head before comparing, freeze the keep rule in charged counts, and when the count stops falling
   across reviews call it a floor and hand the findings over (measures.md, review gate, step 8).
+- 2026-11-18: `claude -p --bare` reads no OAuth or keychain sign-in, so on a subscription every judge fails with "Not logged in" and setup, baseline and preflight run twice. Use `claude -p --model <m> --allowedTools Read --setting-sources '' --strict-mcp-config --disable-slash-commands` as the judge command (a test reply named no instruction file, memory or hook), and call one judge by hand before `setup`. A hook may ask for `BULK_OPUS_REASON` when a script calls Opus judges in a loop.
